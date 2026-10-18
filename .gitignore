@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.idea/
+.venv/
+venv/
+*.zip
+*.tgz
+shared/shopping_list.json
+shared/fridge_state.json.tmp
+.pytest_cache/

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Alexa+ Simulator</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a30;
+      --line: #22305a;
+      --txt: #e8eefc;
+      --mut: #8fa0c8;
+      --cy: #00caff;
+      --ok: #3ddc97;
+      --warn: #ffb020;
+      --bad: #ff5d6c
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--txt);
+      font: 15px/1.45 system-ui, Segoe UI, Roboto, sans-serif
+    }
+
+    header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap
+    }
+
+    header h1 {
+      font-size: 17px;
+      margin: 0
+    }
+
+    .pill {
+      font-size: 12px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      border: 1px solid var(--line);
+      color: var(--mut)
+    }
+
+    .pill.ok {
+      color: var(--ok);
+      border-color: var(--ok)
+    }
+
+    .pill.bad {
+      color: var(--bad);
+      border-color: var(--bad)
+    }
+
+    button {
+      background: var(--panel);
+      color: var(--txt);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer
+    }
+
+    button:hover {
+      border-color: var(--cy)
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px 18px;
+      height: calc(100vh - 58px)
+    }
+
+    @media(max-width:900px) {
+      main {
+        grid-template-columns: 1fr;
+        height: auto
+      }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0
+    }
+
+    .card h2 {
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--mut);
+      margin: 0;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line)
+    }
+
+    #chat {
+      flex: 1;
+      overflow: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 240px
+    }
+
+    .msg {
+      max-width: 85%;
+      padding: 9px 13px;
+      border-radius: 14px
+    }
+
+    .u {
+      align-self: flex-end;
+      background: #1d2f63
+    }
+
+    .a {
+      align-self: flex-start;
+      background: #0e2a3a;
+      border: 1px solid #14455f
+    }
+
+    .ring {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 4px solid var(--cy);
+      box-shadow: 0 0 14px var(--cy);
+      flex: none
+    }
+
+    .ring.think {
+      animation: p 1s infinite
+    }
+
+    @keyframes p {
+      50% {
+        opacity: .3
+      }
+    }
+
+    .bar {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--line);
+      align-items: center
+    }
+
+    input {
+      flex: 1;
+      background: #0b1328;
+      color: var(--txt);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit
+    }
+
+    .chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 0 12px 10px
+    }
+
+    .chips button {
+      font-size: 12px;
+      padding: 4px 9px;
+      border-radius: 99px
+    }
+
+    aside {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0
+    }
+
+    .scroll {
+      overflow: auto;
+      padding: 12px 14px;
+      flex: 1;
+      min-height: 120px
+    }
+
+    .tr {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 13px
+    }
+
+    .tr b {
+      color: var(--cy)
+    }
+
+    .ms {
+      float: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--ok)
+    }
+
+    .ms.over {
+      color: var(--warn)
+    }
+
+    pre {
+      margin: 6px 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--mut);
+      font-size: 12px;
+      max-height: 120px;
+      overflow: auto
+    }
+
+    .it {
+      display: inline-block;
+      margin: 3px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      background: #0e2a3a;
+      border: 1px solid #14455f;
+      font-size: 13px
+    }
+
+    .it.soon {
+      border-color: var(--warn);
+      color: var(--warn)
+    }
+
+    .it.gone {
+      border-color: var(--bad);
+      color: var(--bad)
+    }
+
+    .hint {
+      color: var(--mut);
+      font-size: 12px
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="ring" id="ring"></div>
+    <h1>Alexa+ <span class="hint">simulator &middot; Smart Fridge add-on</span></h1>
+    <span class="pill" id="st">connecting…</span><span class="pill" id="llm"></span>
+    <span style="flex:1"></span><button id="redeploy" title="Alexa+ only re-reads tools on deployment">↻ alexa-ai
+      deploy</button><button id="reset">New conversation</button>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Conversation</h2>
+      <div id="chat"></div>
+      <div class="chips" id="chips"></div>
+      <div class="bar"><button id="mic" title="Speak">🎤</button><input id="in"
+          placeholder="Alexa, what can I make for dinner?" autocomplete="off"><button id="send">Send</button></div>
+    </section>
+    <aside>
+      <section class="card" style="flex:1.2">
+        <h2>MCP tool calls (what Alexa+ sent to your server)</h2>
+        <div class="scroll" id="trace"><span class="hint">Tool calls appear here with latency. Alexa+ expects &lt;
+            500&nbsp;ms.</span></div>
+      </section>
+      <section class="card">
+        <h2>Fridge (live, read via MCP)</h2>
+        <div class="scroll" id="fridge"></div>
+      </section>
+    </aside>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id), sid = 's' + Math.random().toString(36).slice(2);
+    const chat = $('chat'), inp = $('in'); let speak = true;
+    const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    function add(cls, t) { const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = t; chat.appendChild(d); chat.scrollTop = 1e9; return d }
+    function say(t) { if (!speak || !window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); speechSynthesis.speak(u) }
+    async function send(text) {
+      text = (text || inp.value).trim(); if (!text) return; inp.value = ''; add('u', text); $('ring').classList.add('think'); const w = add('a', '…');
+      try {
+        const r = await (await fetch('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: text, session_id: sid }) })).json();
+        w.textContent = r.reply || '(no reply)'; say(r.reply); renderTrace(r); loadFridge()
+      } catch (e) { w.textContent = 'Error: ' + e }
+      $('ring').classList.remove('think')
+    }
+    function renderTrace(r) {
+      const t = $('trace'); if (!t.dataset.i) { t.innerHTML = ''; t.dataset.i = 1 }
+      const h = document.createElement('div'); h.className = 'hint'; h.textContent = `turn: ${r.total_ms} ms total · model: ${r.provider}`; t.prepend(h);
+      [...r.trace].reverse().forEach(x => {
+        const d = document.createElement('div'); d.className = 'tr';
+        d.innerHTML = `<span class="ms ${x.over_budget ? 'over' : ''}">${x.ms} ms${x.over_budget ? ' ⚠' : ''}</span><b>tools/call</b> ${esc(x.tool)}(${esc(JSON.stringify(x.args))})<pre>${esc(JSON.stringify(x.result, null, 1))}</pre>`; t.prepend(d)
+      });
+    }
+    async function loadFridge() {
+      try {
+        const f = await (await fetch('/api/fridge')).json();
+        $('fridge').innerHTML = (f.items || []).map(i => `<span class="it ${i.est_days_left != null && i.est_days_left < 0 ? 'gone' : i.est_days_left != null && i.est_days_left <= 3 ? 'soon' : ''}" title="~${i.est_days_left} days left">${esc(i.item)} ×${i.qty}</span>`).join('') || '<span class="hint">' + esc(f.error || 'empty') + '</span>';
+      } catch (e) { }
+    }
+    async function status() {
+      try {
+        const s = await (await fetch('/api/status')).json(); const p = $('st');
+        p.className = 'pill ' + (s.connected ? 'ok' : 'bad'); p.textContent = s.connected ? `MCP connected · ${s.server} · ${s.tools.length} tools · ${s.protocol}` : 'MCP offline — start the server'; $('llm').textContent = 'model: ' + s.provider
+      } catch (e) { }
+    }
+    $('send').onclick = () => send(); inp.onkeydown = e => { if (e.key === 'Enter') send() };
+    $('reset').onclick = async () => { await fetch('/api/reset?session_id=' + sid, { method: 'POST' }); chat.innerHTML = ''; $('trace').innerHTML = ''; delete $('trace').dataset.i };
+    $('redeploy').onclick = async () => { await fetch('/api/redeploy', { method: 'POST' }); status(); add('a', 'Tools re-registered (simulated alexa-ai deploy).') };
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) { const r = new SR(); r.lang = 'en-IN'; r.onresult = e => send(e.results[0][0].transcript); $('mic').onclick = () => { speechSynthesis.cancel(); r.start() } } else $('mic').style.display = 'none';
+    ['What\'s in my fridge?', 'What can I make for dinner?', 'What\'s about to expire?', 'Do I have paneer?', 'How do I make egg bhurji?', 'Add rice to my shopping list', 'Read my shopping list'].forEach(q => { const b = document.createElement('button'); b.textContent = q; b.onclick = () => send(q); $('chips').appendChild(b) });
+    add('a', "Hi, I'm your simulated Alexa+. Ask me about your fridge."); status(); loadFridge(); setInterval(loadFridge, 8000);
+  </script>
+</body>
+
+</html>

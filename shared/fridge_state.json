@@ -1,0 +1,13 @@
+{
+  "last_updated": "2026-10-13T09:00:00+05:30",
+  "inventory": [
+    {"item": "milk", "qty": 1, "confidence": 0.94, "first_seen": "2026-10-09T08:00:00+05:30"},
+    {"item": "eggs", "qty": 6, "confidence": 0.91, "first_seen": "2026-10-05T08:00:00+05:30"},
+    {"item": "spinach", "qty": 1, "confidence": 0.88, "first_seen": "2026-10-09T08:00:00+05:30"},
+    {"item": "tomato", "qty": 3, "confidence": 0.93, "first_seen": "2026-10-08T08:00:00+05:30"},
+    {"item": "onion", "qty": 2, "confidence": 0.9, "first_seen": "2026-10-01T08:00:00+05:30"},
+    {"item": "paneer", "qty": 1, "confidence": 0.86, "first_seen": "2026-10-10T08:00:00+05:30"},
+    {"item": "cheese", "qty": 1, "confidence": 0.89, "first_seen": "2026-10-03T08:00:00+05:30"},
+    {"item": "bread", "qty": 1, "confidence": 0.9, "first_seen": "2026-10-10T08:00:00+05:30"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "_comment": "Template only -- run `alexa-ai new mcp` to generate the real package. Alexa+ needs a PUBLIC https URL (e.g. cloudflared tunnel to :8899), account linking (OAuth 2.1 + PKCE S256), and the MCP Toolkit is US-only. Fill the listing fields within Amazon's limits.",
+  "name": { "value": "Smart Fridge" },
+  "shortDescription": "Know what's in your fridge and what to cook, using on-device vision.",
+  "fullDescription": "Smart Fridge connects Alexa+ to a camera-equipped fridge. Ask what you have, what is about to spoil, or what to cook for dinner. Vision runs locally for privacy.",
+  "examplePhrases": ["Alexa, what's in my fridge?", "Alexa, what can I make for dinner?", "Alexa, what's about to expire?"],
+  "integrations": [
+    { "type": "MCP", "config": { "endpoints": { "default": { "type": "HTTPS", "uri": "https://YOUR-TUNNEL.trycloudflare.com/mcp" } } } }
+  ]
+}
