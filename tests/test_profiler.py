@@ -40,7 +40,7 @@ def test_profiler_enabled_disabled_toggle(tmp_path):
     res = sample_fn(5)
     assert res == 10
     assert log_file.exists()
-    content = log_file.read_text()
+    content = log_file.read_text(encoding="utf-8")
     assert "sample_fn" in content
     assert "Hits" in content
 
@@ -77,7 +77,7 @@ def test_profiler_hierarchy_and_hit_counts(tmp_path):
     root_task()
 
     assert log_file.exists()
-    content = log_file.read_text()
+    content = log_file.read_text(encoding="utf-8")
 
     # Verify hierarchy display
     assert "root_task" in content
@@ -119,7 +119,7 @@ def test_profiler_with_class_methods(tmp_path):
     assert result == 7
 
     assert log_file.exists()
-    content = log_file.read_text()
+    content = log_file.read_text(encoding="utf-8")
     assert "Worker.compute" in content
     assert "Worker._inner_add" in content
 
@@ -139,7 +139,7 @@ def test_profiler_auto_profile_class(tmp_path):
     calc = Calculator()
     assert calc.step_a() == 42
 
-    content = log_file.read_text()
+    content = log_file.read_text(encoding="utf-8")
     assert "Calculator.step_a" in content
     assert "Calculator.step_b" in content
 
@@ -161,7 +161,7 @@ def test_profiler_exception_handling(tmp_path):
 
     # Log should still be recorded even though an exception occurred
     assert log_file.exists()
-    content = log_file.read_text()
+    content = log_file.read_text(encoding="utf-8")
     assert "safe_parent" in content
     assert "risky_child" in content
 
@@ -205,7 +205,7 @@ def test_inventory_service_pipeline_profiling(tmp_path):
     assert len(response.items) == 2
 
     assert log_file.exists()
-    content = log_file.read_text()
+    content = log_file.read_text(encoding="utf-8")
 
     # Verify pipeline components appear in hierarchy
     assert "InventoryService.sync_inventory" in content
@@ -228,7 +228,7 @@ def test_profiler_init_methods(tmp_path):
     c = Component("sensor")
     assert c.name == "sensor"
 
-    content = log_file.read_text()
+    content = log_file.read_text(encoding="utf-8")
     assert "Component.__init__" in content
 
     # Test DummyCamera __init__ profiling
@@ -236,6 +236,6 @@ def test_profiler_init_methods(tmp_path):
     cam = DummyCamera()
     assert cam.image_path is not None
 
-    content = log_file.read_text()
+    content = log_file.read_text(encoding="utf-8")
     assert "DummyCamera.__init__" in content
 
