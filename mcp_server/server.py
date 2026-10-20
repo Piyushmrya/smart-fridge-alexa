@@ -24,7 +24,7 @@ PORT = int(os.environ.get("MCP_PORT", "8899"))
 API_KEY = os.environ.get("MCP_API_KEY", "")            # Alexa+ -> MCP (bearer from account linking)
 INGEST_KEY = os.environ.get("INGEST_API_KEY", "")      # classifier -> MCP /api/inventory
 AGENT_URL = os.environ.get("AGENT_URL", "http://127.0.0.1:8897")
-AGENT_TIMEOUT = float(os.environ.get("AGENT_TIMEOUT", "6"))
+AGENT_TIMEOUT = float(os.environ.get("AGENT_TIMEOUT", "20"))   # a multi-step Bedrock agent run takes several seconds
 _cache: dict[str, dict] = {}                           # (inventory, prefs) -> agent answer; prewarmed on every ingest
 
 mcp = FastMCP(
@@ -220,7 +220,8 @@ async def _dishes(state, prefs: str, n: int) -> dict:
         res = {"dishes": brain.rules(state["items"], n), "source": "rules-fallback"}
     else:
         log("MCP", f"dish agent answered: {len(res['dishes'])} dishes, source={res.get('source')} ({(time.perf_counter() - t0) * 1000:.0f} ms)", "ok")
-    _cache[k] = res
+    if res.get("source") != "rules-fallback":   # never cache a fallback, so the real agent answer replaces it on the next poll
+        _cache[k] = res
     if len(_cache) > 50:
         _cache.pop(next(iter(_cache)))
     return {**res, "cached": False}

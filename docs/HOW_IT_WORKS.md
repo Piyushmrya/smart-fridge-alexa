@@ -44,7 +44,7 @@ button), `/api/fridge` (the live fridge panel, fetched through MCP), `/api/reset
 ```python
 tools = await get_tools()                       # tool list, cached after the first "deploy"
 async with mcp_session() as (session, init):    # open a live MCP connection to :8899
-    fn = {"anthropic": _anthropic, "openai": _openai}.get(PROVIDER, _demo)
+    fn = {"bedrock": _bedrock, "anthropic": _anthropic, "openai": _openai}.get(PROVIDER, _demo)
     reply = await fn(history, user, tools, session, trace)
 ```
 

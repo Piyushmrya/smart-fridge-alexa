@@ -7,3 +7,4 @@ openai>=1.40
 pytest>=8
 pytest-asyncio>=0.23
 python-dotenv
+strands-agents>=1.40,<2

@@ -19,7 +19,7 @@ See `docs/HOW_IT_WORKS.md` for the full request flow.
   `get_expiring_items`, `suggest_recipes`, `get_recipe_steps`, `search_online_recipes`,
   `add_to_shopping_list`, `get_shopping_list`, `remove_from_shopping_list`.
   Every tool returns data plus a short `speech` sentence, because Alexa speaks it.
-- `_dishes(state, prefs, n)`: cache -> dish agent (`POST /suggest`) -> local rules. Never fails.
+- `_dishes(state, prefs, n)`: cache -> dish agent (`POST /suggest`) -> local rules. Never fails. Results from the rules fallback are not cached, so a slow or failed LLM call is retried next time.
 - `_ask_agent(path, payload)`: HTTP call to the dish agent with a timeout (`AGENT_TIMEOUT`).
 - `_poll_edge()`: background loop; keeps the fridge fresh and the dish cache warm (`EDGE_POLL_SECONDS`).
 - `BearerAuth`: checks `Authorization: Bearer ...` when `MCP_API_KEY` / `INGEST_API_KEY` are set;

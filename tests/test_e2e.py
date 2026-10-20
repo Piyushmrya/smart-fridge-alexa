@@ -81,13 +81,13 @@ def test_agent_llm_path_parses_json_and_falls_back(monkeypatch):
     items = [{"item": "paneer", "qty": 1, "est_days_left": 1}, {"item": "onion", "qty": 2, "est_days_left": 20}]
     monkeypatch.setattr(brain, "PROVIDER", "anthropic")
 
-    async def fake(_):
+    async def fake(_, provider=None):
         return 'Sure!\n{"dishes":[{"name":"Paneer Tikka Wrap","why":"Uses paneer today.","time_min":20,"uses_expiring":["paneer"],"have":["paneer","onion"],"missing":[],"steps":["a","b"]}]}'
     monkeypatch.setattr(brain, "_llm", fake)
     r = asyncio.run(brain.suggest(items, "vegetarian", 3))
     assert r["source"] == "llm:anthropic" and r["dishes"][0]["name"] == "Paneer Tikka Wrap"
 
-    async def boom(_): raise RuntimeError("no key")
+    async def boom(_, provider=None): raise RuntimeError("no key")
     monkeypatch.setattr(brain, "_llm", boom)
     r = asyncio.run(brain.suggest(items, "", 3))
     assert r["source"] == "rules" and "no key" in r["llm_error"]

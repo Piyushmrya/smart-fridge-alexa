@@ -14,24 +14,23 @@
 | 1. Alexa+ simulator | you | `simulator/` |
 | 2. MCP server (+ ingest API) | you | `mcp_server/` |
 | 3. Dish-prediction AI agent | you | `dish_agent/` |
-| 4. Image classifier + edge API | teammate | `classifier/api/` & `classifier/image_model/` (real model; run `python -m classifier.api.main`) or `classifier_stub/mock_edge_server.py` (mock) |
+| 4. Image classifier + edge API | teammate | `classifier_stub/mock_edge_server.py` is a runnable reference of his API |
 
 ## Run
 ```bash
-pip install -r requirements.txt            # simulator + MCP server + dish agent
-# only if you run the real vision classifier: pip install -r classifier/requirements.txt (adds PyTorch, ~2 GB)
+pip install -r requirements.txt
 cp .env.example .env        # (Windows: copy .env.example .env) then edit it; it loads automatically
-python -m classifier.api.main        # [4] :9000   (real vision classifier & edge API)
 python -m mcp_server.server          # [2] :8899   (run each in its own terminal, from the project root)
 python -m dish_agent.service         # [3] :8897
 python -m simulator.app              # [1] :8898  -> open http://127.0.0.1:8898
 python -m pytest -q tests
 ```
-Use `python -m package.module` from the project root (not a file path).
-To run the real vision detection model: `python -m classifier.api.main` and set `EDGE_URL=http://127.0.0.1:9000`.
-For a fake camera mock API without PyTorch: `python -m classifier_stub.mock_edge_server`.
+Use `python -m package.module` from the project root (not a file path). For a fake camera API:
+`python -m classifier_stub.mock_edge_server` and set `EDGE_URL=http://127.0.0.1:9000`.
 No keys are needed: the agent defaults to `rules` and the simulator to `demo`. For real LLMs set
 `AGENT_LLM_PROVIDER=anthropic` and `LLM_PROVIDER=anthropic` plus `ANTHROPIC_API_KEY`.
+
+**Amazon Bedrock (Strands Agents SDK):** set `AGENT_LLM_PROVIDER=bedrock`, `LLM_PROVIDER=bedrock`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION` and the two `BEDROCK_*_MODEL_ID` values (see `.env.example`), then run `python scripts/check_bedrock.py` to verify access, latency and cost. If Bedrock fails and `ANTHROPIC_API_KEY` is set, both services fall back to the Anthropic API, then to built-in rules.
 Without `EDGE_URL` the server runs in legacy **push mode** (see `classifier_stub/push_example.py`).
 Logs: one clean line per step (`LOG_LEVEL=quiet|normal|debug`).
 

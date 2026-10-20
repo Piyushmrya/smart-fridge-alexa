@@ -11,6 +11,7 @@ This module reproduces that loop with a pluggable LLM (Anthropic / OpenAI-compat
 import json, os, re, time
 from contextlib import asynccontextmanager
 
+import bedrock_util, llm_usage
 from fridge_log import log, debug, short
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
@@ -88,6 +89,7 @@ async def _anthropic(history, user, tools, session, trace):
     for _ in range(6):
         log("SIM", f"asking Claude ({model}), round {_ + 1}")
         r = await client.messages.create(model=model, max_tokens=600, system=SYSTEM, tools=spec, messages=msgs)
+        llm_usage.record("SIM", model, r.usage.input_tokens, r.usage.output_tokens, what="anthropic round")
         wanted = [b.name for b in r.content if b.type == "tool_use"]
         if wanted:
             log("SIM", f"Claude wants tool(s): {', '.join(wanted)}")
@@ -121,6 +123,41 @@ async def _openai(history, user, tools, session, trace):
             out = await call_tool(session, tc.function.name, json.loads(tc.function.arguments or "{}"), trace)
             msgs.append({"role": "tool", "tool_call_id": tc.id, "content": out})
     return "Sorry, that took too many steps."
+
+
+def _strands_tool(spec: dict, session, trace: list):
+    """Wrap one MCP tool as a Strands tool that goes through call_tool(), so tracing/timing/logging are identical for every brain."""
+    from strands.types._events import ToolResultEvent
+    from strands.types.tools import AgentTool
+
+    class McpTool(AgentTool):
+        @property
+        def tool_name(self): return spec["name"]
+        @property
+        def tool_spec(self): return {"name": spec["name"], "description": spec["description"] or spec["name"],
+                                     "inputSchema": {"json": spec["input_schema"]}}
+        @property
+        def tool_type(self): return "mcp"
+        async def stream(self, tool_use, invocation_state, **kwargs):
+            out = await call_tool(session, spec["name"], tool_use["input"], trace)
+            failed = bool(trace and trace[-1]["tool"] == spec["name"] and trace[-1]["error"])
+            yield ToolResultEvent({"toolUseId": tool_use["toolUseId"], "status": "error" if failed else "success",
+                                   "content": [{"text": out}]})
+    return McpTool()
+
+
+async def _bedrock(history, user, tools, session, trace):
+    """Alexa+ brain = a Strands agent on Amazon Bedrock whose tools are our MCP server's tools."""
+    from strands import Agent
+    model = bedrock_util.make_model("sim", max_tokens=600)
+    mid = bedrock_util.model_id(model)
+    log("SIM", f"asking Bedrock ({mid}) via Strands, {len(tools)} MCP tools available")
+    msgs = [{"role": m["role"], "content": [{"text": m["content"]}]} for m in history if m.get("content")]
+    agent = Agent(model=model, tools=[_strands_tool(t, session, trace) for t in tools], system_prompt=SYSTEM,
+                  messages=msgs, callback_handler=None)
+    res = await agent.invoke_async(user)
+    llm_usage.record("SIM", mid, *llm_usage.usage_from_result(res), what="bedrock turn")
+    return str(res).strip()
 
 
 async def _demo(history, user, tools, session, trace):
@@ -157,12 +194,19 @@ async def chat(history: list[dict], user: str) -> dict:
     tools = await get_tools()
     trace: list[dict] = []
     async with mcp_session() as (session, init):
-        fn = {"anthropic": _anthropic, "openai": _openai}.get(PROVIDER, _demo)
+        fn = {"bedrock": _bedrock, "anthropic": _anthropic, "openai": _openai}.get(PROVIDER, _demo)
         try:
-            reply = await fn(history, user, tools, session, trace)
+            try:
+                reply = await fn(history, user, tools, session, trace)
+            except Exception as e:
+                if PROVIDER != "bedrock" or not os.environ.get("ANTHROPIC_API_KEY"):
+                    raise
+                log("SIM", f"Bedrock failed ({type(e).__name__}: {short(e, 120)}) -> retrying with the Anthropic API", "warn")
+                trace.clear()
+                reply = await _anthropic(history, user, tools, session, trace)
         except Exception as e:  # missing key, network, etc.
             reply = f"Sorry, my brain hit an error: {type(e).__name__}: {e}"
             log("SIM", f"brain error: {type(e).__name__}: {short(e, 160)}", "fail")
     log("SIM", f'reply in {(time.perf_counter() - t0) * 1000:.0f} ms, {len(trace)} tool call(s): "{short(reply, 100)}"', "fail" if reply.startswith("Sorry, my brain") else "ok")
-    return {"reply": reply, "trace": trace, "provider": PROVIDER if PROVIDER in ("anthropic", "openai") else "demo",
+    return {"reply": reply, "trace": trace, "provider": PROVIDER if PROVIDER in ("bedrock", "anthropic", "openai") else "demo",
             "total_ms": round((time.perf_counter() - t0) * 1000)}

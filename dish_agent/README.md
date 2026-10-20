@@ -10,7 +10,7 @@ the MCP server falls back to the same rule-based logic.
 | `brain.py` | The actual thinking: prompt, LLM call, JSON parsing, rule-based fallback. |
 
 ## brain.py — important parts
-- `PROVIDER`: from `AGENT_LLM_PROVIDER` — `anthropic`, `openai`, or `rules` (no key needed).
+- `PROVIDER`: from `AGENT_LLM_PROVIDER` — `bedrock` (Strands agent on Amazon Bedrock, with tools: rank recipes, recipe steps, TheMealDB search, shopping list), `anthropic`, `openai`, or `rules` (no key needed). Fallback chain: bedrock -> anthropic (if key set) -> rules. Token usage and estimated cost are logged per call (`llm_usage.py`).
 - `SYSTEM`: the instruction given to the LLM (Indian home cooking, use soon-to-expire items first,
   assume pantry staples, answer with JSON only).
 - `_prompt(items, preferences, n)`: turns the fridge list into the user message.
@@ -24,4 +24,4 @@ the MCP server falls back to the same rule-based logic.
 Each dish: `name, why, time_min, uses_expiring, have, missing, steps`.
 
 ## Settings (.env)
-`AGENT_LLM_PROVIDER`, `ANTHROPIC_API_KEY`, `AGENT_ANTHROPIC_MODEL`, `AGENT_OPENAI_*`, `AGENT_PORT`, `LOG_LEVEL`.
+`AGENT_LLM_PROVIDER`, `AGENT_RUN_TIMEOUT`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION`, `BEDROCK_AGENT_MODEL_ID`, `ANTHROPIC_API_KEY`, `AGENT_ANTHROPIC_MODEL`, `AGENT_OPENAI_*`, `AGENT_PORT`, `LOG_LEVEL`.
