@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Fridge - Bounding Box Labeler</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">🧊</span>
+        <span class="logo-text">FridgeBox<span class="logo-accent">Labeler</span></span>
+      </div>
+      <div class="dir-selector">
+        <label for="dirInput" class="dir-label">Directory:</label>
+        <div class="dir-input-wrapper">
+          <input type="text" id="dirInput" class="dir-input" placeholder="/path/to/images" spellcheck="false">
+          <button id="loadDirBtn" class="btn btn-secondary btn-sm" title="Scan directory for images">
+            <span>Load Folder</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="nav-controls">
+        <button id="prevImgBtn" class="btn btn-icon" title="Previous Image ( [ or Left Arrow )">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <span id="imgCounter" class="img-counter">Image 0 of 0</span>
+        <button id="nextImgBtn" class="btn btn-icon" title="Next Image ( ] or Right Arrow )">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div id="saveStatus" class="status-indicator">
+        <span class="status-dot"></span>
+        <span class="status-text">Ready</span>
+      </div>
+      <button id="saveBtn" class="btn btn-primary" title="Save annotations to disk ( Ctrl+S )">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span>Save Ground Truth</span>
+      </button>
+      <button id="helpBtn" class="btn btn-ghost btn-icon" title="Keyboard Shortcuts & Help">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Application Body -->
+  <main class="app-layout">
+    <!-- Left Sidebar: Images List -->
+    <aside class="sidebar-left">
+      <div class="sidebar-header">
+        <h3 class="sidebar-title">Images (<span id="totalImagesBadge">0</span>)</h3>
+        <div class="filter-tabs">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="labeled">Done</button>
+          <button class="filter-btn" data-filter="unlabeled">Pending</button>
+        </div>
+      </div>
+      <div id="imageList" class="image-list-container">
+        <!-- Rendered dynamically -->
+        <div class="empty-state">No images loaded. Enter a directory path above.</div>
+      </div>
+    </aside>
+
+    <!-- Center Canvas Workspace -->
+    <section class="canvas-workspace">
+      <!-- Floating Toolbar -->
+      <div class="floating-toolbar">
+        <div class="tool-group">
+          <button id="toolSelect" class="tool-btn active" title="Select / Edit Box ( V or Esc )">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7 18 3-7 7-3L3 3z"></path></svg>
+            <span>Select (V)</span>
+          </button>
+          <button id="toolDraw" class="tool-btn" title="Draw Bounding Box ( B )">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+            <span>Draw (B)</span>
+          </button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <div class="tool-group">
+          <button id="zoomInBtn" class="tool-btn-icon" title="Zoom In ( + )">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+          </button>
+          <span id="zoomLevelText" class="zoom-text">100%</span>
+          <button id="zoomOutBtn" class="tool-btn-icon" title="Zoom Out ( - )">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+          </button>
+          <button id="zoomFitBtn" class="tool-btn-icon" title="Fit to Screen ( 0 )">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+          </button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <div class="tool-group">
+          <button id="undoBtn" class="tool-btn-icon" title="Undo ( Ctrl+Z )">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+          </button>
+          <button id="redoBtn" class="tool-btn-icon" title="Redo ( Ctrl+Y )">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          </button>
+          <button id="deleteBoxBtn" class="tool-btn-icon text-danger" title="Delete Selected Box ( Del / Backspace )">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <!-- Model Predictions Overlay Options -->
+        <div class="tool-group model-overlay-group">
+          <label class="toggle-switch" title="Toggle overlay of Grounding DINO model detections">
+            <input type="checkbox" id="showModelOverlay">
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Model Overlay</span>
+          </label>
+          <select id="modelPredictionSelect" class="form-select form-select-sm" title="Select model prediction source">
+            <option value="">No predictions</option>
+          </select>
+          <button id="importPredictionsBtn" class="btn btn-secondary btn-sm" title="Copy model detections as editable ground-truth labels">
+            <span>Import as Labels</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas Container -->
+      <div id="canvasViewport" class="canvas-viewport">
+        <canvas id="mainCanvas"></canvas>
+      </div>
+
+      <!-- Footer Info Bar -->
+      <div class="canvas-footer">
+        <div class="footer-left">
+          <span id="imgDimensions" class="info-pill">0 × 0 px</span>
+          <span id="mouseCoords" class="info-pill">X: 0, Y: 0</span>
+        </div>
+        <div class="footer-center">
+          <span class="canvas-hint">Drag with Space or Middle Click to Pan • Scroll to Zoom • Drag Box to Move/Resize</span>
+        </div>
+        <div class="footer-right">
+          <span id="activeFileName" class="info-pill filename-pill">-</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Box Editor & Labels List -->
+    <aside class="sidebar-right">
+      <!-- Active Box Inspector -->
+      <div class="inspector-card">
+        <div class="inspector-header">
+          <h4 class="inspector-title">Selected Box</h4>
+          <span id="selectedBoxId" class="badge">None</span>
+        </div>
+
+        <div id="boxEditorContent" class="inspector-body disabled">
+          <div class="form-group">
+            <label for="labelInput" class="form-label">Food Label:</label>
+            <div class="autocomplete-wrapper">
+              <input type="text" id="labelInput" class="form-input" placeholder="Type food name (e.g., tomato, lettuce)" autocomplete="off">
+              <div id="autocompleteList" class="autocomplete-dropdown hidden"></div>
+            </div>
+          </div>
+
+          <!-- Quick Food Label Chips -->
+          <div class="quick-chips-section">
+            <label class="form-label text-muted">Quick Tags:</label>
+            <div id="quickChipsList" class="chips-container">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Bounding Box Coordinates (Exact Pixels) -->
+          <div class="coords-grid">
+            <div class="coord-field">
+              <label>X1 (Left)</label>
+              <input type="number" id="coordX1" class="coord-input" step="1">
+            </div>
+            <div class="coord-field">
+              <label>Y1 (Top)</label>
+              <input type="number" id="coordY1" class="coord-input" step="1">
+            </div>
+            <div class="coord-field">
+              <label>X2 (Right)</label>
+              <input type="number" id="coordX2" class="coord-input" step="1">
+            </div>
+            <div class="coord-field">
+              <label>Y2 (Bottom)</label>
+              <input type="number" id="coordY2" class="coord-input" step="1">
+            </div>
+            <div class="coord-field">
+              <label>Width</label>
+              <input type="number" id="coordW" class="coord-input" readonly>
+            </div>
+            <div class="coord-field">
+              <label>Height</label>
+              <input type="number" id="coordH" class="coord-input" readonly>
+            </div>
+          </div>
+
+          <div class="inspector-actions">
+            <button id="deleteActiveBoxBtn" class="btn btn-danger btn-sm w-full">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span>Delete Box (Del)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- List of Annotations on this Image -->
+      <div class="annotations-card">
+        <div class="annotations-header">
+          <h4 class="inspector-title">Annotations (<span id="currentBoxesCount">0</span>)</h4>
+          <button id="clearCurrentBoxesBtn" class="btn btn-ghost btn-xs text-danger" title="Clear all boxes on current image">Clear All</button>
+        </div>
+        <div id="annotationsList" class="annotations-scroll-list">
+          <div class="empty-state-small">No bounding boxes drawn yet.<br>Click & drag on the image to label!</div>
+        </div>
+      </div>
+
+      <!-- Model Predictions Legend (if enabled) -->
+      <div id="modelLegendCard" class="legend-card hidden">
+        <div class="legend-header">
+          <span class="legend-title">🤖 Model Predictions Layer</span>
+          <span id="modelBoxCountBadge" class="badge badge-info">0 detected</span>
+        </div>
+        <p class="legend-desc">Dashed outlines show model detections. Use them as a reference to verify ground truth.</p>
+        <div id="modelDetectionsList" class="model-detections-list"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Keyboard Shortcuts & Help Modal -->
+  <div id="helpModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Keyboard Shortcuts & Guide</h3>
+        <button id="closeHelpBtn" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <table class="shortcuts-table">
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Shortcut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Draw Bounding Box tool</td><td><kbd>B</kbd></td></tr>
+            <tr><td>Select / Edit tool</td><td><kbd>V</kbd> or <kbd>Esc</kbd></td></tr>
+            <tr><td>Delete Selected Box</td><td><kbd>Del</kbd> or <kbd>Backspace</kbd></td></tr>
+            <tr><td>Save Annotations</td><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td></tr>
+            <tr><td>Undo / Redo</td><td><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Ctrl</kbd> + <kbd>Y</kbd></td></tr>
+            <tr><td>Previous / Next Image</td><td><kbd>[</kbd> / <kbd>]</kbd> or <kbd>&larr;</kbd> / <kbd>&rarr;</kbd></td></tr>
+            <tr><td>Pan Canvas</td><td>Hold <kbd>Space</kbd> + Click & Drag, or Middle Click</td></tr>
+            <tr><td>Zoom In / Out</td><td><kbd>Mouse Wheel</kbd> or <kbd>+</kbd> / <kbd>-</kbd></td></tr>
+            <tr><td>Fit to Screen</td><td><kbd>0</kbd></td></tr>
+            <tr><td>Nudge Selected Box</td><td><kbd>Arrow Keys</kbd> (Hold <kbd>Shift</kbd> for 10px)</td></tr>
+          </tbody>
+        </table>
+        <div class="help-section">
+          <h4>💡 Evaluation & Ground Truth Alignment</h4>
+          <p>
+            When you click <strong>Save Ground Truth</strong>, the application saves both <code>annotations.json</code>
+            and <code>ground_truth_bounding_boxes.json</code> into the image folder.
+            The bounding box format is exact pixel coordinates <code>[x1, y1, x2, y2]</code>, matching the Grounding DINO
+            model detection format so you can directly calculate Precision and Recall with IoU thresholds!
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="gotItBtn" class="btn btn-primary">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
