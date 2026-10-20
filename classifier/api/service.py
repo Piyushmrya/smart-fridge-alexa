@@ -41,6 +41,7 @@ def compute_iou(box1: Optional[List[float]], box2: Optional[List[float]]) -> flo
 
 class ItemNotFoundError(Exception):
     """Raised when a patch targets an item ID not found in inventory."""
+    @Profiler
     def __init__(self, item_id: str):
         super().__init__(f"Item id '{item_id}' not found in tracking inventory.")
         self.item_id = item_id
@@ -53,6 +54,7 @@ class InventoryService:
     and maintains the persistent tracking state.
     """
 
+    @Profiler
     def __init__(self, camera: BaseCamera, detector: BaseDetector):
         self.camera = camera
         self.detector = detector

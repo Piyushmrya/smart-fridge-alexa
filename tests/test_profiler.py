@@ -213,3 +213,29 @@ def test_inventory_service_pipeline_profiling(tmp_path):
     assert "MockTestDetector.detect" in content
     assert "InventoryService._generate_item_id" in content
     assert "CLASSIFIER PIPELINE PROFILING REPORT" in content
+
+
+def test_profiler_init_methods(tmp_path):
+    log_file = tmp_path / "test_init_methods.txt"
+    set_log_file(str(log_file))
+
+    # Test class with decorated __init__
+    class Component:
+        @Profiler
+        def __init__(self, name):
+            self.name = name
+
+    c = Component("sensor")
+    assert c.name == "sensor"
+
+    content = log_file.read_text()
+    assert "Component.__init__" in content
+
+    # Test DummyCamera __init__ profiling
+    from classifier.image_model.camera import DummyCamera
+    cam = DummyCamera()
+    assert cam.image_path is not None
+
+    content = log_file.read_text()
+    assert "DummyCamera.__init__" in content
+

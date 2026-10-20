@@ -248,8 +248,8 @@ class Profiler:
         """Iterates over class attributes and decorates all methods with Profiler."""
         cls_name = _clean_name(target_cls.__name__)
         for attr_name, attr_value in list(target_cls.__dict__.items()):
-            # Avoid magic internal methods except __init__ if desired, skip standard dunders
-            if attr_name.startswith("__") and attr_name.endswith("__"):
+            # Avoid magic internal methods except __init__, skip other standard dunders
+            if attr_name.startswith("__") and attr_name.endswith("__") and attr_name != "__init__":
                 continue
 
             if inspect.isfunction(attr_value) or isinstance(attr_value, (classmethod, staticmethod)):

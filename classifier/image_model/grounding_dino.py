@@ -71,6 +71,7 @@ class GroundingDinoDetector(BaseDetector):
     to avoid BERT 512-token sequence length limitations.
     """
 
+    @Profiler
     def __init__(
         self,
         model_id: str = DEFAULT_MODEL_ID,
