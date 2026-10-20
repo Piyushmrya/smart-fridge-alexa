@@ -1,3 +1,9 @@
+import pytest
+
+# These tests need the classifier extras: pip install -r classifier/requirements.txt
+pytest.importorskip("torch")
+pytest.importorskip("transformers")
+
 from typing import List
 from PIL import Image
 from starlette.testclient import TestClient

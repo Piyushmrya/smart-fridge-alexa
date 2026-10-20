@@ -7,9 +7,3 @@ openai>=1.40
 pytest>=8
 pytest-asyncio>=0.23
 python-dotenv
-# Vision model & edge classifier dependencies
-torch>=2.0
-torchvision>=0.15
-transformers>=4.40
-pillow>=10.0
-

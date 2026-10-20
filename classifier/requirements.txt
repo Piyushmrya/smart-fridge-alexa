@@ -1,0 +1,7 @@
+# Extra dependencies for the real vision classifier / edge API (classifier/). Not needed for the simulator, MCP server or dish agent.
+# Install after the main requirements:  pip install -r classifier/requirements.txt
+-r ../requirements.txt
+torch>=2.0
+torchvision>=0.15
+transformers>=4.40
+pillow>=10.0

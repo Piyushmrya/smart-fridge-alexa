@@ -15,15 +15,58 @@ SHELF_LIFE = {"milk": 7, "eggs": 21, "chicken": 2, "spinach": 5, "tomato": 7, "a
               "bread": 5, "yogurt": 10, "butter": 60, "carrot": 21, "onion": 30, "potato": 30, "paneer": 5,
               "banana": 5, "lettuce": 5, "orange": 14, "capsicum": 7, "cucumber": 7, "juice": 7}
 DEFAULT_SHELF = 7
-SYNONYMS = {"egg": "eggs", "curd": "yogurt", "dahi": "yogurt", "tomatoes": "tomato", "onions": "onion",
-            "potatoes": "potato", "bell pepper": "capsicum", "pepper": "capsicum", "carrots": "carrot",
-            "apples": "apple", "bananas": "banana", "cucumbers": "cucumber", "chicken breast": "chicken"}
+SYNONYMS = {"egg": "eggs", "boiled egg": "eggs", "curd": "yogurt", "dahi": "yogurt", "greek yogurt": "yogurt",
+            "tomatoes": "tomato", "onions": "onion", "shallot": "onion", "potatoes": "potato",
+            "bell pepper": "capsicum", "pepper": "capsicum", "carrots": "carrot", "apples": "apple",
+            "bananas": "banana", "cucumbers": "cucumber", "chicken breast": "chicken", "chicken thighs": "chicken",
+            "chicken wings": "chicken", "rotisserie chicken": "chicken", "raw chicken": "chicken",
+            "cottage cheese": "paneer"}
+
+# The vision model returns specific names ("red onion", "cherry tomato", "milk bottle"); recipes and the shelf-life
+# table use plain names. norm() folds the specific name onto the plain one when it can, otherwise leaves it as is.
+_MODIFIERS = {"red", "green", "yellow", "white", "brown", "black", "cherry", "baby", "fresh", "raw", "organic",
+              "whole", "skim", "sweet", "boiled"}
+_CONTAINERS = {"bottle", "jar", "box", "pack", "packet", "carton", "container", "bag", "bowl", "can", "tub", "pouch"}
+_NO_FOLD = {"peanut butter", "almond butter", "sweet potato"}   # look like "butter"/"potato" but are different items
+
+
+def _known() -> set[str]:
+    from .recipes import RECIPES
+    ings = {i for r in RECIPES for i in r["required"] + r["optional"]}
+    return set(SHELF_LIFE) | ings
+
+
+def _singular(w: str) -> str:
+    if w.endswith("ies") and len(w) > 4:
+        return w[:-3] + "y"
+    if w.endswith("oes"):
+        return w[:-2]
+    if w.endswith("s") and not w.endswith("ss") and len(w) > 3:
+        return w[:-1]
+    return w
 
 
 def norm(name: str) -> str:
     n = re.sub(r"[^a-z ]", "", re.sub(r"[_\-]+", " ", name.lower())).strip()
     n = re.sub(r"\s+", " ", n)
-    return SYNONYMS.get(n, n)
+    n = SYNONYMS.get(n, n)
+    known = _known()
+    if n in known or n in _NO_FOLD:
+        return n
+    words = [w for w in n.split() if w not in _CONTAINERS]          # "milk bottle" -> "milk"
+    kept = [w for w in words if w not in _MODIFIERS] or words         # "red onion" -> "onion"
+    for cand in (" ".join(words), " ".join(kept)):
+        cand = SYNONYMS.get(cand, cand)
+        if cand in known:
+            return cand
+        s = " ".join(kept[:-1] + [_singular(kept[-1])]) if kept else cand
+        if SYNONYMS.get(s, s) in known:
+            return SYNONYMS.get(s, s)
+    if kept:                                                          # "mozzarella cheese" -> "cheese"
+        last = SYNONYMS.get(_singular(kept[-1]), _singular(kept[-1]))
+        if last in known and " ".join(kept) not in _NO_FOLD:
+            return last
+    return " ".join(kept) if kept else n
 
 
 def _parse(ts: str | None):

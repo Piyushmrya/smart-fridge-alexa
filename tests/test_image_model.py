@@ -1,4 +1,10 @@
 import pytest
+
+# These tests need the classifier extras: pip install -r classifier/requirements.txt
+pytest.importorskip("torch")
+pytest.importorskip("transformers")
+
+import pytest
 from PIL import Image
 
 from classifier.image_model.base import BaseCamera, BaseDetector, DetectedObject

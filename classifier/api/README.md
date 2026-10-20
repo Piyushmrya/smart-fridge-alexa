@@ -1,4 +1,6 @@
-# api/ & image_model/ — Image Classifier + Edge API (Block 4)
+# classifier/ — Image Classifier + Edge API (Block 4)
+
+(`classifier/api/` = the HTTP service, `classifier/image_model/` = camera + vision model.)
 
 Real implementation of the Smart Fridge Edge API and vision model detection pipeline. Replaces `classifier_stub/mock_edge_server.py`.
 
@@ -7,14 +9,14 @@ Real implementation of the Smart Fridge Edge API and vision model detection pipe
 ```
                       +-------------------+
                       |   FastAPI Layer   |
-                      |   (api/main.py)   |
+                      |   (classifier/api/main.py)   |
                       +---------+---------+
                                 |
                     Depends on InventoryService
                                 |
                       +---------v---------+
                       | InventoryService  |
-                      |  (api/service.py) |
+                      |  (classifier/api/service.py) |
                       +----+---------+----+
                            |         |
                Calls capture_frame() Calls detect()
@@ -33,8 +35,9 @@ Real implementation of the Smart Fridge Edge API and vision model detection pipe
 ## Running the Real Edge API
 
 ```bash
-# From the project root:
-python -m api.main
+# From the project root (first time only: install the extra dependencies, ~2 GB incl. PyTorch):
+pip install -r classifier/requirements.txt
+python -m classifier.api.main
 ```
 Listens on `http://0.0.0.0:9000` (or configured via `EDGE_PORT` and `EDGE_HOST`).
 
@@ -55,6 +58,11 @@ EDGE_URL=http://127.0.0.1:9000
 ## Vocabulary & Models
 
 - Grounding DINO Zero-Shot Object Detector (`IDEA-Research/grounding-dino-tiny`).
-- Curated vocabulary of 200+ food ingredients in `image_model/vocabulary.py`.
+- Curated vocabulary of 200+ food ingredients in `classifier/image_model/vocabulary.py`.
 - Non-Maximum Suppression (NMS) and automatic prompt chunking to operate within BERT's 512-token limit.
-- Hardware-agnostic camera interface in `image_model/base.py` (`DummyCamera` reading `image_model/sample_fridge.png`).
+- Hardware-agnostic camera interface in `classifier/image_model/base.py` (`DummyCamera` reading `classifier/image_model/sample_fridge.png`).
+
+## Notes
+- The first start downloads the Grounding DINO weights (~700 MB) into `classifier/image_model/models/` (git-ignored) and runs one detection.
+- Labels the detector returns (e.g. `red onion`, `milk bottle`) are folded onto plain item names by `mcp_server/store.py: norm()`; see `tests/test_labels.py`.
+- Tests: `python -m pytest tests/test_api.py tests/test_image_model.py` (skipped automatically if the extras are not installed).

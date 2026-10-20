@@ -18,7 +18,8 @@
 
 ## Run
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt            # simulator + MCP server + dish agent
+# only if you run the real vision classifier: pip install -r classifier/requirements.txt (adds PyTorch, ~2 GB)
 cp .env.example .env        # (Windows: copy .env.example .env) then edit it; it loads automatically
 python -m classifier.api.main        # [4] :9000   (real vision classifier & edge API)
 python -m mcp_server.server          # [2] :8899   (run each in its own terminal, from the project root)
