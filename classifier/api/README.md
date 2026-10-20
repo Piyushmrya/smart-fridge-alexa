@@ -37,6 +37,8 @@ Real implementation of the Smart Fridge Edge API and vision model detection pipe
 ```bash
 # From the project root (first time only: install the extra dependencies, ~2 GB incl. PyTorch):
 pip install -r classifier/requirements.txt
+
+# Run the Edge API server:
 python -m classifier.api.main
 ```
 Listens on `http://0.0.0.0:9000` (or configured via `EDGE_PORT` and `EDGE_HOST`).

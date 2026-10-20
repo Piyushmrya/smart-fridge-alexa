@@ -4,6 +4,7 @@ import time
 from PIL import Image
 
 from classifier.image_model.base import BaseCamera
+from classifier.profiler import Profiler
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +20,12 @@ class DummyCamera(BaseCamera):
     Simulates a physical sensor/camera capture pipeline.
     """
 
+    @Profiler
     def __init__(self, image_path: str = DEFAULT_SAMPLE_IMAGE_PATH):
         self.image_path = image_path
         logger.info(f"[DummyCamera] Initialized with target image path: {self.image_path}")
 
+    @Profiler
     def capture_frame(self) -> Image.Image:
         """
         Reads the local image and returns it as a PIL Image in RGB format.

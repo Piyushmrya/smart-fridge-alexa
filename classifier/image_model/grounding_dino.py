@@ -8,6 +8,7 @@ from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
 from classifier.image_model.base import BaseDetector, DetectedObject
 from classifier.image_model.vocabulary import FRIDGE_FOOD_ITEMS, get_food_prompt_chunks
+from classifier.profiler import Profiler
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ DEFAULT_CACHE_DIR = os.path.join(os.path.dirname(__file__), "models")
 DEFAULT_CONFIDENCE_THRESHOLD = 0.25
 
 
+@Profiler
 def compute_box_iou(box1: Optional[List[float]], box2: Optional[List[float]]) -> float:
     """Compute IoU between two bounding boxes [x1, y1, x2, y2]."""
     if not box1 or not box2 or len(box1) != 4 or len(box2) != 4:
@@ -33,6 +35,7 @@ def compute_box_iou(box1: Optional[List[float]], box2: Optional[List[float]]) ->
     return inter / union if union > 0 else 0.0
 
 
+@Profiler
 def apply_nms(detections: List[DetectedObject], iou_threshold: float = 0.5) -> List[DetectedObject]:
     """Non-maximum suppression to merge duplicate overlapping bounding boxes."""
     sorted_dets = sorted(detections, key=lambda x: x.confidence, reverse=True)
@@ -47,6 +50,7 @@ def apply_nms(detections: List[DetectedObject], iou_threshold: float = 0.5) -> L
     return kept
 
 
+@Profiler
 def clean_label(raw_label: str) -> str:
     """Clean repeated consecutive tokens (e.g. 'tomato tomato' -> 'tomato')."""
     words = raw_label.strip().split()
@@ -67,6 +71,7 @@ class GroundingDinoDetector(BaseDetector):
     to avoid BERT 512-token sequence length limitations.
     """
 
+    @Profiler
     def __init__(
         self,
         model_id: str = DEFAULT_MODEL_ID,
@@ -110,6 +115,7 @@ class GroundingDinoDetector(BaseDetector):
             f"confidence_threshold={self.confidence_threshold}"
         )
 
+    @Profiler
     def load_model(self) -> None:
         """Loads Grounding DINO processor and model weights into memory/device."""
         if self.processor is not None and self.model is not None:
@@ -148,6 +154,7 @@ class GroundingDinoDetector(BaseDetector):
             )
             raise
 
+    @Profiler
     def detect(self, image: Image.Image) -> List[DetectedObject]:
         """
         Runs object detection on the PIL image across all prompt vocabulary chunks,

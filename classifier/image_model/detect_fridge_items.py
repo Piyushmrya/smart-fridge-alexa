@@ -22,7 +22,10 @@ except ModuleNotFoundError:
     except ModuleNotFoundError:
         import sys
         sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from classifier.image_model.vocabulary import FRIDGE_FOOD_ITEMS
+try:
+    from classifier.profiler import Profiler
+except ModuleNotFoundError:
+    from profiler import Profiler
 
 # Items to detect in the fridge — pure food ingredients!
 FRIDGE_ITEMS = " . ".join(FRIDGE_FOOD_ITEMS[:40])
@@ -31,6 +34,7 @@ FRIDGE_ITEMS = " . ".join(FRIDGE_FOOD_ITEMS[:40])
 CONFIDENCE_THRESHOLD = 0.25
 
 # ── Load Model ─────────────────────────────────────────────────
+@Profiler
 def load_model():
     """Load Grounding DINO model and processor."""
     print(f"Loading model: {MODEL_ID}")
@@ -56,6 +60,7 @@ def load_model():
 
 
 # ── Run Detection ──────────────────────────────────────────────
+@Profiler
 def detect_items(image_path, processor, model, device, text_prompt=FRIDGE_ITEMS,
                  threshold=CONFIDENCE_THRESHOLD):
     """Detect items in an image using Grounding DINO."""
@@ -85,6 +90,7 @@ def detect_items(image_path, processor, model, device, text_prompt=FRIDGE_ITEMS,
 
 
 # ── Display Results ────────────────────────────────────────────
+@Profiler
 def print_results(results):
     """Print detected items as a list."""
     boxes = results["boxes"]

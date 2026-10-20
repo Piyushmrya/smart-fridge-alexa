@@ -11,6 +11,5 @@ shared/fridge_state.json.tmp
 .pytest_cache/
 classifier/image_model/models/
 classifier/image_model/sample_fridge_detected.png
-# credentials downloads
-*-api-key*.csv
-*credentials*.csv
+profiling_logs/
+.vscode/

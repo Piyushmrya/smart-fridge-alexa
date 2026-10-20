@@ -2,10 +2,12 @@ from typing import Optional
 from classifier.api.service import InventoryService
 from classifier.image_model.camera import DummyCamera
 from classifier.image_model.grounding_dino import GroundingDinoDetector
+from classifier.profiler import Profiler
 
 _inventory_service_instance: Optional[InventoryService] = None
 
 
+@Profiler
 def get_inventory_service() -> InventoryService:
     """
     FastAPI dependency that returns the configured InventoryService instance.
