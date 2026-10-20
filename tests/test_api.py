@@ -2,11 +2,11 @@ from typing import List
 from PIL import Image
 from starlette.testclient import TestClient
 
-from api.main import app
-from api.dependencies import get_inventory_service
-from api.service import InventoryService
-from api.models import PatchInventoryItem
-from image_model.base import BaseCamera, BaseDetector, DetectedObject
+from classifier.api.main import app
+from classifier.api.dependencies import get_inventory_service
+from classifier.api.service import InventoryService
+from classifier.api.models import PatchInventoryItem
+from classifier.image_model.base import BaseCamera, BaseDetector, DetectedObject
 
 
 class MockCamera(BaseCamera):

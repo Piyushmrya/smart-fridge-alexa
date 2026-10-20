@@ -5,14 +5,14 @@ from typing import List
 from fastapi import Depends, FastAPI, Query, status
 from fastapi.responses import JSONResponse
 
-from api.dependencies import get_inventory_service
-from api.models import (
+from classifier.api.dependencies import get_inventory_service
+from classifier.api.models import (
     ErrorResponse,
     InventoryResponse,
     PatchInventoryItem,
     PatchInventoryResponse,
 )
-from api.service import InventoryService, ItemNotFoundError
+from classifier.api.service import InventoryService, ItemNotFoundError
 
 # Configure standardized logging across the application
 logging.basicConfig(
@@ -138,4 +138,4 @@ if __name__ == "__main__":
 
     host = os.environ.get("EDGE_HOST", "0.0.0.0")
     port = int(os.environ.get("EDGE_PORT", "9000"))
-    uvicorn.run("api.main:app", host=host, port=port)
+    uvicorn.run("classifier.api.main:app", host=host, port=port)

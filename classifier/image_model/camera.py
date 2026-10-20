@@ -3,7 +3,7 @@ import os
 import time
 from PIL import Image
 
-from image_model.base import BaseCamera
+from classifier.image_model.base import BaseCamera
 
 logger = logging.getLogger(__name__)
 

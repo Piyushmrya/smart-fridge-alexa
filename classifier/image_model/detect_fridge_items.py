@@ -15,14 +15,14 @@ MODEL_ID = "IDEA-Research/grounding-dino-tiny"
 MODEL_CACHE_DIR = os.path.join(os.path.dirname(__file__), "models")
 
 try:
-    from image_model.vocabulary import FRIDGE_FOOD_ITEMS
+    from classifier.image_model.vocabulary import FRIDGE_FOOD_ITEMS
 except ModuleNotFoundError:
     try:
         from vocabulary import FRIDGE_FOOD_ITEMS
     except ModuleNotFoundError:
         import sys
         sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from image_model.vocabulary import FRIDGE_FOOD_ITEMS
+        from classifier.image_model.vocabulary import FRIDGE_FOOD_ITEMS
 
 # Items to detect in the fridge — pure food ingredients!
 FRIDGE_ITEMS = " . ".join(FRIDGE_FOOD_ITEMS[:40])

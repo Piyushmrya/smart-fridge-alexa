@@ -3,13 +3,13 @@ import time
 from typing import Dict, List, Optional
 from PIL import Image
 
-from api.models import (
+from classifier.api.models import (
     InventoryItem,
     InventoryResponse,
     PatchInventoryItem,
     PatchInventoryResponse,
 )
-from image_model.base import BaseCamera, BaseDetector, DetectedObject
+from classifier.image_model.base import BaseCamera, BaseDetector, DetectedObject
 
 logger = logging.getLogger(__name__)
 

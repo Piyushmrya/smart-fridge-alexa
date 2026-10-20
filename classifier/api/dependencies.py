@@ -1,7 +1,7 @@
 from typing import Optional
-from api.service import InventoryService
-from image_model.camera import DummyCamera
-from image_model.grounding_dino import GroundingDinoDetector
+from classifier.api.service import InventoryService
+from classifier.image_model.camera import DummyCamera
+from classifier.image_model.grounding_dino import GroundingDinoDetector
 
 _inventory_service_instance: Optional[InventoryService] = None
 

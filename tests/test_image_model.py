@@ -1,9 +1,9 @@
 import pytest
 from PIL import Image
 
-from image_model.base import BaseCamera, BaseDetector, DetectedObject
-from image_model.camera import DummyCamera, DEFAULT_SAMPLE_IMAGE_PATH
-from image_model.grounding_dino import GroundingDinoDetector, clean_label
+from classifier.image_model.base import BaseCamera, BaseDetector, DetectedObject
+from classifier.image_model.camera import DummyCamera, DEFAULT_SAMPLE_IMAGE_PATH
+from classifier.image_model.grounding_dino import GroundingDinoDetector, clean_label
 
 
 def test_clean_label():
@@ -54,7 +54,7 @@ def test_grounding_dino_detector_structure():
 
 
 def test_fridge_food_vocabulary_contents():
-    from image_model.vocabulary import FRIDGE_FOOD_ITEMS, get_food_prompt_chunks
+    from classifier.image_model.vocabulary import FRIDGE_FOOD_ITEMS, get_food_prompt_chunks
 
     assert len(FRIDGE_FOOD_ITEMS) >= 200
 

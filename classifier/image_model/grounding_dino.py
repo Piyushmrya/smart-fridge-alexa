@@ -6,8 +6,8 @@ import torch
 from PIL import Image
 from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
-from image_model.base import BaseDetector, DetectedObject
-from image_model.vocabulary import FRIDGE_FOOD_ITEMS, get_food_prompt_chunks
+from classifier.image_model.base import BaseDetector, DetectedObject
+from classifier.image_model.vocabulary import FRIDGE_FOOD_ITEMS, get_food_prompt_chunks
 
 logger = logging.getLogger(__name__)
 
