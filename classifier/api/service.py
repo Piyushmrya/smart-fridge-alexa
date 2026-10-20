@@ -10,10 +10,12 @@ from classifier.api.models import (
     PatchInventoryResponse,
 )
 from classifier.image_model.base import BaseCamera, BaseDetector, DetectedObject
+from classifier.profiler import Profiler
 
 logger = logging.getLogger(__name__)
 
 
+@Profiler
 def compute_iou(box1: Optional[List[float]], box2: Optional[List[float]]) -> float:
     """Compute Intersection over Union between two bounding boxes [x1, y1, x2, y2]."""
     if not box1 or not box2 or len(box1) != 4 or len(box2) != 4:
@@ -64,10 +66,12 @@ class InventoryService:
             f"detector={detector.__class__.__name__}"
         )
 
+    @Profiler
     def _generate_item_id(self) -> str:
         self._item_counter += 1
         return f"item_{self._item_counter}"
 
+    @Profiler
     def sync_inventory(self) -> InventoryResponse:
         """
         Capture frame from camera, run detection, and update tracking inventory.
@@ -194,6 +198,7 @@ class InventoryService:
             logger.exception(f"[InventoryService] Synchronization failed with error: {exc}")
             raise
 
+    @Profiler
     def get_inventory(self, force_refresh: bool = False) -> InventoryResponse:
         """
         Get current tracked inventory. Triggers camera capture & inference
@@ -227,6 +232,7 @@ class InventoryService:
             items=current_items,
         )
 
+    @Profiler
     def patch_inventory(self, patches: List[PatchInventoryItem]) -> PatchInventoryResponse:
         """
         Batch partial update on tracked inventory items.
