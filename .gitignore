@@ -9,3 +9,5 @@ venv/
 shared/shopping_list.json
 shared/fridge_state.json.tmp
 .pytest_cache/
+image_model/models/
+image_model/sample_fridge_detected.png
