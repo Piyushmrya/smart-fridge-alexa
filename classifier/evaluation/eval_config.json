@@ -1,0 +1,54 @@
+{
+  "dataset": {
+    "images_dir": "/home/niare/Downloads/WhatsApp Unknown 2026-10-20 at 3.15.51 PM",
+    "annotations_path": "/home/niare/Downloads/WhatsApp Unknown 2026-10-20 at 3.15.51 PM/ground_truth_bounding_boxes.json",
+    "image_extensions": [".jpg", ".jpeg", ".png", ".webp"]
+  },
+  "matching": {
+    "iou_threshold": 0.50,
+    "case_sensitive": false,
+    "normalize_labels": true
+  },
+  "models": [
+    {
+      "name": "YOLO-World-Small",
+      "detector_type": "yolo_world",
+      "model_id": "yolov8s-worldv2.pt",
+      "confidence_threshold": 0.20,
+      "device": "auto",
+      "options": {
+        "iou_threshold": 0.50
+      }
+    },
+    {
+      "name": "Grounding-DINO-Tiny",
+      "detector_type": "grounding_dino",
+      "model_id": "IDEA-Research/grounding-dino-tiny",
+      "confidence_threshold": 0.25,
+      "device": "auto"
+    },
+    {
+      "name": "OWLv2-Base",
+      "detector_type": "owlv2",
+      "model_id": "google/owlv2-base-patch16-ensemble",
+      "confidence_threshold": 0.15,
+      "device": "auto"
+    },
+    {
+      "name": "Florence-2-Base",
+      "detector_type": "florence2",
+      "model_id": "microsoft/Florence-2-base",
+      "confidence_threshold": 0.25,
+      "device": "auto"
+    },
+    {
+      "name": "Claude-Vision",
+      "detector_type": "claude",
+      "model_id": "claude-sonnet-5-5",
+      "confidence_threshold": 0.20,
+      "device": "cloud"
+    }
+  ],
+  "output_dir": "classifier/evaluation/results",
+  "save_visualizations": true
+}

@@ -102,7 +102,7 @@ class GroundingDinoDetector(BaseDetector):
         else:
             raise TypeError("prompt must be a string or list of strings")
 
-        if device is None:
+        if device is None or device == "auto":
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
             self.device = device

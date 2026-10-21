@@ -1,7 +1,7 @@
 from typing import Optional
 from classifier.api.service import InventoryService
 from classifier.image_model.camera import DummyCamera
-from classifier.image_model.grounding_dino import GroundingDinoDetector
+from classifier.image_model.factory import load_detector_from_config
 from classifier.profiler import Profiler
 
 _inventory_service_instance: Optional[InventoryService] = None
@@ -16,7 +16,7 @@ def get_inventory_service() -> InventoryService:
     global _inventory_service_instance
     if _inventory_service_instance is None:
         camera = DummyCamera()
-        detector = GroundingDinoDetector()
+        detector = load_detector_from_config()
         _inventory_service_instance = InventoryService(camera=camera, detector=detector)
     return _inventory_service_instance
 

@@ -13,3 +13,6 @@ classifier/image_model/models/
 classifier/image_model/sample_fridge_detected.png
 profiling_logs/
 .vscode/
+weights/
+*.pt
+classifier/evaluation/results/

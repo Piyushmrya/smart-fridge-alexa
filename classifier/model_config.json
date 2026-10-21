@@ -1,0 +1,10 @@
+{
+  "detector_type": "yolo_world",
+  "model_id": "yolov8s-worldv2.pt",
+  "confidence_threshold": 0.20,
+  "device": "auto",
+  "cache_dir": null,
+  "options": {
+    "iou_threshold": 0.5
+  }
+}
