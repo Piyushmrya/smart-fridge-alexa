@@ -44,10 +44,10 @@ class DetectorConfig(BaseModel):
     """Configuration model for vision detectors loaded from JSON."""
 
     detector_type: Literal[
-        "yolo_world", "grounding_dino", "owlv2", "florence2", "claude", "claude_vision", "llm"
+        "claude", "yolo_world", "grounding_dino", "owlv2", "florence2", "claude_vision", "llm"
     ] = Field(
-        "yolo_world",
-        description="Vision model type to use ('yolo_world', 'grounding_dino', 'owlv2', 'florence2', 'claude')",
+        "claude",
+        description="Vision model type to use ('claude', 'yolo_world', 'grounding_dino', 'owlv2', 'florence2')",
     )
     model_id: Optional[str] = Field(
         None, description="Hugging Face repo ID or local checkpoint path"
@@ -89,9 +89,9 @@ def load_detector_from_config(
         if not os.path.exists(config_path):
             logger.warning(
                 f"[DetectorFactory] Config file '{config_path}' not found! "
-                f"Falling back to default 'yolo_world' detector."
+                f"Falling back to default 'claude' detector."
             )
-            raw_config = {"detector_type": "yolo_world"}
+            raw_config = {"detector_type": "claude"}
         else:
             logger.info(f"[DetectorFactory] Reading vision detector configuration from: {config_path}")
             with open(config_path, "r", encoding="utf-8") as f:

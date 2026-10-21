@@ -75,6 +75,13 @@ def test_load_detector_from_config_dict():
     assert claude_det.client is None  # Lazy loading preserved
 
 
+def test_load_detector_default():
+    # Calling with default arguments should load claude from model_config.json
+    detector = load_detector_from_config()
+    assert isinstance(detector, ClaudeVisionDetector)
+    assert isinstance(detector, BaseDetector)
+
+
 def test_load_detector_from_json_file(tmp_path):
     custom_json = tmp_path / "custom_config.json"
     custom_json.write_text(

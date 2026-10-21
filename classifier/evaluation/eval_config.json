@@ -11,6 +11,13 @@
   },
   "models": [
     {
+      "name": "Claude-Vision",
+      "detector_type": "claude",
+      "model_id": "claude-sonnet-5-5",
+      "confidence_threshold": 0.20,
+      "device": "cloud"
+    },
+    {
       "name": "YOLO-World-Small",
       "detector_type": "yolo_world",
       "model_id": "yolov8s-worldv2.pt",
@@ -40,13 +47,6 @@
       "model_id": "microsoft/Florence-2-base",
       "confidence_threshold": 0.25,
       "device": "auto"
-    },
-    {
-      "name": "Claude-Vision",
-      "detector_type": "claude",
-      "model_id": "claude-sonnet-5-5",
-      "confidence_threshold": 0.20,
-      "device": "cloud"
     }
   ],
   "output_dir": "classifier/evaluation/results",
