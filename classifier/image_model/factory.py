@@ -10,7 +10,7 @@ from classifier.image_model.grounding_dino import GroundingDinoDetector
 from classifier.image_model.yolo_world import YoloWorldDetector
 from classifier.image_model.owlv2 import OwlV2Detector
 from classifier.image_model.florence2 import Florence2Detector
-from classifier.image_model.claude_detector import ClaudeVisionDetector
+from classifier.image_model.llm_detector import LLMVisionDetector
 from classifier.profiler import Profiler
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,10 @@ MODEL_APPROX_SIZES = {
     "owlv2": "600 MB",
     "florence2": "460 MB",
     "claude": "Cloud API (0 MB)",
-    "claude_vision": "Cloud API (0 MB)",
     "llm": "Cloud API (0 MB)",
+    "llm_vision": "Cloud API (0 MB)",
+    "claude": "Cloud API (0 MB)",
+    "claude_vision": "Cloud API (0 MB)",
 }
 
 
@@ -44,10 +46,10 @@ class DetectorConfig(BaseModel):
     """Configuration model for vision detectors loaded from JSON."""
 
     detector_type: Literal[
-        "claude", "yolo_world", "grounding_dino", "owlv2", "florence2", "claude_vision", "llm"
+        "llm", "llm_vision", "claude", "claude_vision", "yolo_world", "grounding_dino", "owlv2", "florence2"
     ] = Field(
-        "claude",
-        description="Vision model type to use ('claude', 'yolo_world', 'grounding_dino', 'owlv2', 'florence2')",
+        "llm",
+        description="Vision model type to use ('llm', 'claude', 'yolo_world', 'grounding_dino', 'owlv2', 'florence2')",
     )
     model_id: Optional[str] = Field(
         None, description="Hugging Face repo ID or local checkpoint path"
@@ -89,9 +91,9 @@ def load_detector_from_config(
         if not os.path.exists(config_path):
             logger.warning(
                 f"[DetectorFactory] Config file '{config_path}' not found! "
-                f"Falling back to default 'claude' detector."
+                f"Falling back to default 'llm' detector."
             )
-            raw_config = {"detector_type": "claude"}
+            raw_config = {"detector_type": "llm"}
         else:
             logger.info(f"[DetectorFactory] Reading vision detector configuration from: {config_path}")
             with open(config_path, "r", encoding="utf-8") as f:
@@ -163,23 +165,25 @@ def load_detector_from_config(
             kwargs["task_prompt"] = cfg.options["task_prompt"]
         return Florence2Detector(**kwargs)
 
-    elif det_type in ("claude", "claude_vision", "llm"):
+    elif det_type in ("claude", "claude_vision", "llm", "llm_vision"):
         kwargs = {}
         if cfg.model_id:
             kwargs["model_id"] = cfg.model_id
         if cfg.confidence_threshold is not None:
             kwargs["confidence_threshold"] = cfg.confidence_threshold
         for opt_key in (
+            "provider",
             "api_key",
             "max_image_dim",
             "max_tokens",
             "temperature",
             "apply_dedup",
             "iou_threshold",
+            "coord_format",
         ):
             if opt_key in cfg.options:
                 kwargs[opt_key] = cfg.options[opt_key]
-        return ClaudeVisionDetector(**kwargs)
+        return LLMVisionDetector(**kwargs)
 
     else:
         raise ValueError(

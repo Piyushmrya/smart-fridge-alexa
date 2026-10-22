@@ -4,8 +4,9 @@ import pytest
 from PIL import Image
 
 from classifier.image_model.base import BaseDetector, DetectedObject
-from classifier.image_model.claude_detector import ClaudeVisionDetector, _parse_json_from_response
+from classifier.image_model.llm_detector import LLMVisionDetector, _parse_json_from_response
 from classifier.image_model.factory import DetectorConfig, load_detector_from_config
+from classifier.llm import LLMResponse
 
 
 def test_parse_json_from_response():
@@ -29,8 +30,8 @@ def test_parse_json_from_response():
         _parse_json_from_response("No json here at all.")
 
 
-def test_claude_vision_detector_init():
-    detector = ClaudeVisionDetector(
+def test_llm_vision_detector_init():
+    detector = LLMVisionDetector(
         model_id="claude-sonnet-5-5",
         confidence_threshold=0.3,
         api_key="mock_key",
@@ -38,41 +39,41 @@ def test_claude_vision_detector_init():
     assert isinstance(detector, BaseDetector)
     assert detector.model_id == "claude-sonnet-5-5"
     assert detector.confidence_threshold == 0.3
-    assert detector.client is None
+    assert detector.llm_client is not None
 
 
-def test_claude_vision_detector_factory():
+def test_llm_vision_detector_factory():
     cfg = DetectorConfig(
-        detector_type="claude",
+        detector_type="llm",
         model_id="claude-sonnet-5-5",
         confidence_threshold=0.25,
         options={"api_key": "mock_key", "temperature": 0.2},
     )
-    assert cfg.detector_type == "claude"
+    assert cfg.detector_type == "llm"
 
     detector = load_detector_from_config(
         config_dict={
-            "detector_type": "claude",
+            "detector_type": "llm",
             "model_id": "claude-sonnet-5-5",
             "confidence_threshold": 0.25,
             "options": {"api_key": "mock_key"},
         }
     )
-    assert isinstance(detector, ClaudeVisionDetector)
+    assert isinstance(detector, LLMVisionDetector)
     assert detector.confidence_threshold == 0.25
 
 
-def test_claude_vision_detector_normalize_box():
+def test_llm_vision_detector_normalize_box():
     orig_w, orig_h = 1000, 500
 
     # 1. Normalized 0-1000: [ymin, xmin, ymax, xmax] -> [100, 200, 400, 600]
     # ymin=100 -> y1=50, xmin=200 -> x1=200, ymax=400 -> y2=200, xmax=600 -> x2=600
-    det_norm = ClaudeVisionDetector(api_key="mock_key", coord_format="normalized_1000")
+    det_norm = LLMVisionDetector(api_key="mock_key", coord_format="normalized_1000")
     box = det_norm._normalize_box([100, 200, 400, 600], orig_w, orig_h)
     assert box == [200.0, 50.0, 600.0, 200.0]
 
     # 2. Pixel format: [ymin, xmin, ymax, xmax] -> [50, 200, 200, 600]
-    det_px = ClaudeVisionDetector(api_key="mock_key", coord_format="pixel")
+    det_px = LLMVisionDetector(api_key="mock_key", coord_format="pixel")
     box_px = det_px._normalize_box([50, 200, 200, 600], orig_w, orig_h)
     assert box_px == [200.0, 50.0, 600.0, 200.0]
 
@@ -88,41 +89,46 @@ def test_claude_vision_detector_normalize_box():
     assert det_norm._normalize_box("invalid", orig_w, orig_h) is None
 
 
-def test_claude_vision_detector_detect_mock():
-    detector = ClaudeVisionDetector(
+def test_llm_vision_detector_detect_mock():
+    detector = LLMVisionDetector(
         model_id="claude-sonnet-5-5",
         api_key="mock_key",
         confidence_threshold=0.20,
         coord_format="normalized_1000",
     )
 
-    mock_client = MagicMock()
-    mock_block = MagicMock()
-    mock_block.type = "text"
-    mock_block.text = json.dumps({
-        "detections": [
-            {
-                "label": "tomato",
-                "confidence": 0.95,
-                "box_2d": [100, 200, 400, 500],
-            },
-            {
-                "label": "butter",
-                "confidence": 0.88,
-                "box_2d": [500, 100, 800, 400],
-            },
-            {
-                "label": "low_conf_item",
-                "confidence": 0.10,  # Below threshold
-                "box_2d": [10, 10, 50, 50],
-            },
-        ]
-    })
-    mock_response = MagicMock()
-    mock_response.content = [mock_block]
-    mock_client.messages.create.return_value = mock_response
+    mock_llm_client = MagicMock()
+    mock_llm_client.complete_vision.return_value = LLMResponse(
+        text=json.dumps({
+            "detections": [
+                {
+                    "label": "tomato",
+                    "confidence": 0.95,
+                    "box_2d": [100, 200, 400, 500],
+                },
+                {
+                    "label": "butter",
+                    "confidence": 0.88,
+                    "box_2d": [500, 100, 800, 400],
+                },
+                {
+                    "label": "low_conf_item",
+                    "confidence": 0.10,  # Below threshold
+                    "box_2d": [10, 10, 50, 50],
+                },
+            ]
+        }),
+        model_id="claude-sonnet-5-5",
+        provider="anthropic",
+        input_tokens=150,
+        output_tokens=40,
+        thinking_tokens=0,
+        total_tokens=190,
+        cost_usd=0.001,
+        latency_ms=100.0,
+    )
 
-    detector.client = mock_client
+    detector.llm_client = mock_llm_client
 
     img = Image.new("RGB", (800, 600), color="white")
     results = detector.detect(img)

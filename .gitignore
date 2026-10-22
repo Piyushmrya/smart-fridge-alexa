@@ -16,3 +16,5 @@ profiling_logs/
 weights/
 *.pt
 classifier/evaluation/results/
+classifier_llm_costs.txt
+*_llm_costs.txt

@@ -11,7 +11,7 @@ from classifier.image_model.yolo_world import YoloWorldDetector
 from classifier.image_model.owlv2 import OwlV2Detector
 from classifier.image_model.florence2 import Florence2Detector
 from classifier.image_model.grounding_dino import GroundingDinoDetector
-from classifier.image_model.claude_detector import ClaudeVisionDetector
+from classifier.image_model.llm_detector import LLMVisionDetector
 from classifier.image_model.factory import (
     DetectorConfig,
     load_detector_from_config,
@@ -68,17 +68,15 @@ def test_load_detector_from_config_dict():
     assert isinstance(flo_det, BaseDetector)
     assert flo_det.model is None  # Lazy loading preserved
 
-    # Test Claude Vision (instantiation only, lazy connection)
-    claude_det = load_detector_from_config(config_dict={"detector_type": "claude"})
-    assert isinstance(claude_det, ClaudeVisionDetector)
-    assert isinstance(claude_det, BaseDetector)
-    assert claude_det.client is None  # Lazy loading preserved
-
+    # Test LLM Vision (instantiation only, lazy connection)
+    llm_det = load_detector_from_config(config_dict={"detector_type": "llm"})
+    assert isinstance(llm_det, LLMVisionDetector)
+    assert isinstance(llm_det, BaseDetector)
 
 def test_load_detector_default():
-    # Calling with default arguments should load claude from model_config.json
+    # Calling with default arguments should load llm from model_config.json
     detector = load_detector_from_config()
-    assert isinstance(detector, ClaudeVisionDetector)
+    assert isinstance(detector, LLMVisionDetector)
     assert isinstance(detector, BaseDetector)
 
 

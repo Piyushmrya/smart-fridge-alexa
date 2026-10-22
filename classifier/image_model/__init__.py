@@ -4,7 +4,7 @@ from classifier.image_model.grounding_dino import GroundingDinoDetector
 from classifier.image_model.yolo_world import YoloWorldDetector
 from classifier.image_model.owlv2 import OwlV2Detector
 from classifier.image_model.florence2 import Florence2Detector
-from classifier.image_model.claude_detector import ClaudeVisionDetector
+from classifier.image_model.llm_detector import LLMVisionDetector
 from classifier.image_model.factory import (
     DetectorConfig,
     load_detector_from_config,
@@ -21,7 +21,7 @@ __all__ = [
     "YoloWorldDetector",
     "OwlV2Detector",
     "Florence2Detector",
-    "ClaudeVisionDetector",
+    "LLMVisionDetector",
     "DetectorConfig",
     "load_detector_from_config",
     "get_available_disk_space_gb",

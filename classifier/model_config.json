@@ -1,5 +1,5 @@
 {
-  "detector_type": "claude",
+  "detector_type": "llm",
   "model_id": "claude-sonnet-5-5",
   "confidence_threshold": 0.20,
   "device": "cloud",
