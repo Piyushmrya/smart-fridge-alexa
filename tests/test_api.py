@@ -113,34 +113,39 @@ def test_end_to_end_real_grounding_dino_integration():
     Test real end-to-end flow using the default DummyCamera (reading sample_fridge.png)
     and GroundingDinoDetector via FastAPI test client.
     """
-    # Ensure dependencies are clear so default GroundingDinoDetector and DummyCamera are used
-    app.dependency_overrides.clear()
+    from classifier.image_model.grounding_dino import GroundingDinoDetector
+    from classifier.image_model.camera import DummyCamera
+    service = InventoryService(camera=DummyCamera(), detector=GroundingDinoDetector())
+    app.dependency_overrides[get_inventory_service] = lambda: service
 
-    with TestClient(app) as client:
-        # GET /inventory triggers detection or retrieves initial state
-        res = client.get("/inventory")
-        assert res.status_code == 200
-        data = res.json()
-        assert "items" in data
-        assert "last_updated_epoch" in data
-        assert len(data["items"]) > 0
+    try:
+        with TestClient(app) as client:
+            # GET /inventory triggers detection or retrieves initial state
+            res = client.get("/inventory")
+            assert res.status_code == 200
+            data = res.json()
+            assert "items" in data
+            assert "last_updated_epoch" in data
+            assert len(data["items"]) > 0
 
-        # Verify that detected items have labels, confidences, and valid bboxes
-        first_item = data["items"][0]
-        assert "id" in first_item
-        assert "label" in first_item
-        assert first_item["confidence"] > 0
-        assert first_item["bbox"] is not None
-        assert len(first_item["bbox"]) == 4
+            # Verify that detected items have labels, confidences, and valid bboxes
+            first_item = data["items"][0]
+            assert "id" in first_item
+            assert "label" in first_item
+            assert first_item["confidence"] > 0
+            assert first_item["bbox"] is not None
+            assert len(first_item["bbox"]) == 4
 
-        # Test patch on a detected item
-        patch_res = client.patch(
-            "/inventory",
-            json=[{"id": first_item["id"], "label": "custom_labeled_item"}],
-        )
-        assert patch_res.status_code == 200
-        patch_data = patch_res.json()
-        assert patch_data["success"] is True
-        assert patch_data["updated_items"][0]["label"] == "custom_labeled_item"
-        assert patch_data["updated_items"][0]["manual_override"] is True
+            # Test patch on a detected item
+            patch_res = client.patch(
+                "/inventory",
+                json=[{"id": first_item["id"], "label": "custom_labeled_item"}],
+            )
+            assert patch_res.status_code == 200
+            patch_data = patch_res.json()
+            assert patch_data["success"] is True
+            assert patch_data["updated_items"][0]["label"] == "custom_labeled_item"
+            assert patch_data["updated_items"][0]["manual_override"] is True
+    finally:
+        app.dependency_overrides.clear()
 
