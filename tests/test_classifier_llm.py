@@ -8,7 +8,14 @@ import pytest
 from PIL import Image
 
 from classifier.llm.tracker import CostTracker, estimate_cost, price_for
-from classifier.llm.client import LLMClient, LLMResponse, infer_provider, track_llm_call
+from classifier.llm.client import (
+    LLMClient,
+    LLMResponse,
+    infer_provider,
+    resolve_model_for_provider,
+    resolve_provider_chain,
+    track_llm_call,
+)
 from classifier.image_model.llm_detector import LLMVisionDetector
 
 
@@ -232,3 +239,145 @@ def test_llm_vision_detector_with_mock_client():
     assert results[0].confidence == 0.92
     assert results[0].bbox == [50.0, 50.0, 200.0, 200.0]
     assert mock_client.complete_vision.called
+
+
+# -----------------------------------------------------------------------------
+# Amazon Bedrock & Fallback Tests
+# -----------------------------------------------------------------------------
+
+def test_infer_provider_bedrock(monkeypatch):
+    assert infer_provider("global.anthropic.claude-sonnet-4-6", explicit_provider="bedrock") == "bedrock"
+    assert infer_provider("bedrock-claude") == "bedrock"
+
+    monkeypatch.setenv("CLASSIFIER_LLM_PROVIDER", "bedrock")
+    assert infer_provider("claude-sonnet-5-5") == "bedrock"
+
+
+def test_resolve_model_for_provider():
+    assert "sonnet" in resolve_model_for_provider("claude-sonnet-5-5", "bedrock")
+    assert resolve_model_for_provider("global.anthropic.claude-sonnet-4-6", "bedrock") == "global.anthropic.claude-sonnet-4-6"
+    assert resolve_model_for_provider("global.anthropic.claude-sonnet-4-6", "anthropic") == "claude-sonnet-4-6"
+    assert resolve_model_for_provider("claude-sonnet-5-5", "openai") == "gpt-4o-mini"
+
+
+def test_resolve_provider_chain(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+    chain = resolve_provider_chain("bedrock")
+    assert chain == ["bedrock", "anthropic", "openai"]
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("AGENT_OPENAI_API_KEY", raising=False)
+    chain = resolve_provider_chain("bedrock")
+    assert chain == ["bedrock", "anthropic"]
+
+    chain = resolve_provider_chain("anthropic")
+    assert chain == ["anthropic"]
+
+
+def test_llm_client_complete_vision_bedrock_success(tmp_path: Path):
+    log_file = tmp_path / "bedrock_costs.txt"
+    tracker = CostTracker(log_file=str(log_file))
+    client = LLMClient(tracker=tracker)
+
+    mock_bedrock = MagicMock()
+    mock_block = SimpleNamespace(type="text", text='{"detections": [{"label": "yogurt", "confidence": 0.93, "box_2d": [15, 15, 80, 80]}]}')
+    mock_resp = SimpleNamespace(
+        content=[mock_block],
+        usage=SimpleNamespace(input_tokens=700, output_tokens=120, thinking_tokens=0),
+    )
+    mock_bedrock.messages.create.return_value = mock_resp
+
+    with patch.object(client, "_get_bedrock_client", return_value=mock_bedrock):
+        response = client.complete_vision(
+            prompt="Detect items",
+            image_b64="fake_base64",
+            model_id="global.anthropic.claude-sonnet-4-6",
+            provider="bedrock",
+        )
+
+    assert response.provider == "bedrock"
+    assert response.input_tokens == 700
+    assert response.output_tokens == 120
+    assert "yogurt" in response.text
+    assert mock_bedrock.messages.create.called
+
+    log_content = log_file.read_text(encoding="utf-8")
+    assert "[CLASSIFIER:bedrock]" in log_content
+
+
+def test_llm_client_bedrock_fallback_to_anthropic(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("AGENT_OPENAI_API_KEY", raising=False)
+
+    log_file = tmp_path / "fallback_costs.txt"
+    tracker = CostTracker(log_file=str(log_file))
+    client = LLMClient(tracker=tracker)
+
+    # Bedrock client raises an error (e.g. 404 / NotFoundError / auth failure)
+    mock_bedrock = MagicMock()
+    mock_bedrock.messages.create.side_effect = RuntimeError("Bedrock model not available or expired")
+
+    # Native Anthropic client succeeds
+    mock_anthropic = MagicMock()
+    mock_block = SimpleNamespace(type="text", text='{"detections": [{"label": "butter", "confidence": 0.88, "box_2d": [10, 10, 50, 50]}]}')
+    mock_resp = SimpleNamespace(
+        content=[mock_block],
+        usage=SimpleNamespace(input_tokens=650, output_tokens=110, thinking_tokens=0),
+    )
+    mock_anthropic.messages.create.return_value = mock_resp
+
+    with patch.object(client, "_get_bedrock_client", return_value=mock_bedrock), \
+         patch.object(client, "_get_anthropic_client", return_value=mock_anthropic):
+
+        response = client.complete_vision(
+            prompt="Detect items",
+            image_b64="fake_base64",
+            model_id="claude-sonnet-5-5",
+            provider="bedrock",
+        )
+
+    # Should have attempted bedrock, failed, and seamlessly succeeded on anthropic
+    assert mock_bedrock.messages.create.called
+    assert mock_anthropic.messages.create.called
+    assert response.provider == "anthropic"
+    assert "butter" in response.text
+    assert response.input_tokens == 650
+
+    log_content = log_file.read_text(encoding="utf-8")
+    assert "[CLASSIFIER:anthropic]" in log_content
+
+
+def test_llm_client_text_bedrock_fallback_to_anthropic(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+
+    log_file = tmp_path / "fallback_text_costs.txt"
+    tracker = CostTracker(log_file=str(log_file))
+    client = LLMClient(tracker=tracker)
+
+    mock_bedrock = MagicMock()
+    mock_bedrock.messages.create.side_effect = Exception("Bedrock timeout")
+
+    mock_anthropic = MagicMock()
+    mock_block = SimpleNamespace(type="text", text="Hello from fallback Anthropic")
+    mock_resp = SimpleNamespace(
+        content=[mock_block],
+        usage=SimpleNamespace(input_tokens=100, output_tokens=20, thinking_tokens=0),
+    )
+    mock_anthropic.messages.create.return_value = mock_resp
+
+    with patch.object(client, "_get_bedrock_client", return_value=mock_bedrock), \
+         patch.object(client, "_get_anthropic_client", return_value=mock_anthropic):
+
+        response = client.complete_text(
+            prompt="Hello",
+            model_id="claude-sonnet-5-5",
+            provider="bedrock",
+        )
+
+    assert mock_bedrock.messages.create.called
+    assert mock_anthropic.messages.create.called
+    assert response.provider == "anthropic"
+    assert response.text == "Hello from fallback Anthropic"
+

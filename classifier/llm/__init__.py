@@ -1,7 +1,15 @@
 """Classifier LLM package: unified client, multi-provider abstraction, and cost tracking."""
 
 from classifier.llm.tracker import CostTracker, get_cost_tracker, estimate_cost, price_for
-from classifier.llm.client import LLMClient, LLMResponse, get_llm_client, track_llm_call
+from classifier.llm.client import (
+    LLMClient,
+    LLMResponse,
+    get_llm_client,
+    track_llm_call,
+    infer_provider,
+    resolve_model_for_provider,
+    resolve_provider_chain,
+)
 
 __all__ = [
     "CostTracker",
@@ -12,4 +20,7 @@ __all__ = [
     "LLMResponse",
     "get_llm_client",
     "track_llm_call",
+    "infer_provider",
+    "resolve_model_for_provider",
+    "resolve_provider_chain",
 ]

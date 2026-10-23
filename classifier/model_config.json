@@ -4,5 +4,7 @@
   "confidence_threshold": 0.20,
   "device": "cloud",
   "cache_dir": null,
-  "options": {}
+  "options": {
+    "provider": "bedrock"
+  }
 }
