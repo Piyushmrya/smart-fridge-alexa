@@ -34,7 +34,8 @@ async def suggest(b: SuggestIn):
     out = await brain.suggest(b.items, b.preferences, b.n)
     ms = (time.perf_counter() - t0) * 1000
     if out.get("llm_error"):
-        log("AGENT", f"LLM failed ({short(out['llm_error'], 120)}) -> used rules ({ms:.0f} ms)", "fail")
+        what = "used rules" if out.get("source") == "rules" else f"answered by {out.get('source')}"
+        log("AGENT", f"LLM problem ({short(out['llm_error'], 120)}) -> {what} ({ms:.0f} ms)", "fail" if out.get("source") == "rules" else "warn")
     else:
         log("AGENT", f"{len(out['dishes'])} dishes from {out.get('source')}: {short([d['name'] for d in out['dishes']], 80)} ({ms:.0f} ms)", "ok")
     debug("AGENT", f"full result: {short(out, 600)}")

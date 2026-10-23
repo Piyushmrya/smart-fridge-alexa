@@ -52,14 +52,15 @@ def is_down(provider: str) -> bool:
     return False
 
 
-def mark_down(provider: str, err: Exception) -> None:
-    """Skip this provider for a while if the error looks permanent (access, auth, quota, billing)."""
+def mark_down(provider: str, err: Exception, force: bool = False) -> None:
+    """Skip this provider for a while if the error looks permanent (access, auth, quota, billing),
+    or force=True (our own run timeout: a provider that is too slow is as useless as a broken one)."""
     s = f"{type(err).__name__} {err}".lower()
     permanent = any(k in s for k in ("accessdenied", "not authorized", "throttl", "too many tokens", "invalid_payment",
                                      "use case details", "unrecognizedclient", "invalidsignature", "expiredtoken",
                                      "authentication", "invalid x-api-key", "401", "403", "credit balance", "no credentials",
                                      "nocredentials", "resourcenotfound", "validationexception"))
-    if permanent and COOLDOWN > 0:
+    if (permanent or force) and COOLDOWN > 0:
         _down[provider] = time.time() + COOLDOWN
 
 

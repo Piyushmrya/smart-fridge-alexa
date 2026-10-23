@@ -8,7 +8,7 @@ What real Alexa+ does (per developer.amazon.com/docs/alexaplus/add-ons):
   * expects round trips < 500 ms
 This module reproduces that loop with a pluggable LLM (Anthropic / OpenAI-compatible) or an offline keyword router.
 """
-import json, os, re, time
+import asyncio, json, os, re, time
 from contextlib import asynccontextmanager
 
 import bedrock_util, llm_usage
@@ -20,6 +20,8 @@ from mcp.types import Implementation
 MCP_URL = os.environ.get("MCP_URL", "http://127.0.0.1:8899/mcp")
 MCP_KEY = os.environ.get("MCP_API_KEY", "")
 PROVIDER = os.environ.get("LLM_PROVIDER", "demo").lower()
+MAX_TOOL_CALLS = int(os.environ.get("SIM_MAX_TOOL_CALLS", "6"))      # per turn, Bedrock/Strands brain
+SIM_RUN_TIMEOUT = float(os.environ.get("SIM_RUN_TIMEOUT", "12"))     # seconds before falling back to the next provider
 LATENCY_BUDGET_MS = 500
 
 SYSTEM = (
@@ -139,6 +141,10 @@ def _strands_tool(spec: dict, session, trace: list):
         @property
         def tool_type(self): return "mcp"
         async def stream(self, tool_use, invocation_state, **kwargs):
+            if len(trace) >= MAX_TOOL_CALLS:   # a weak model can loop on the same tool forever; make it answer instead
+                yield ToolResultEvent({"toolUseId": tool_use["toolUseId"], "status": "error",
+                                       "content": [{"text": "Tool limit reached. Answer the user now with what you already have."}]})
+                return
             out = await call_tool(session, spec["name"], tool_use["input"], trace)
             failed = bool(trace and trace[-1]["tool"] == spec["name"] and trace[-1]["error"])
             yield ToolResultEvent({"toolUseId": tool_use["toolUseId"], "status": "error" if failed else "success",
@@ -155,7 +161,7 @@ async def _bedrock(history, user, tools, session, trace):
     msgs = [{"role": m["role"], "content": [{"text": m["content"]}]} for m in history if m.get("content")]
     agent = Agent(model=model, tools=[_strands_tool(t, session, trace) for t in tools], system_prompt=SYSTEM,
                   messages=msgs, callback_handler=None)
-    res = await agent.invoke_async(user)
+    res = await asyncio.wait_for(agent.invoke_async(user), timeout=SIM_RUN_TIMEOUT)
     llm_usage.record("SIM", mid, *llm_usage.usage_from_result(res), what="bedrock turn")
     return str(res).strip()
 
@@ -206,7 +212,7 @@ async def chat(history: list[dict], user: str) -> dict:
             except Exception as e:
                 failures.append(name)
                 log("SIM", f"{name} failed ({type(e).__name__}: {short(e, 120)}) -> trying the next provider", "warn")
-                llm_chain.mark_down(name, e)
+                llm_chain.mark_down(name, e, force=isinstance(e, TimeoutError))
         if reply is None:   # nothing configured, or everything failed: the built-in keyword router always works
             if failures:
                 log("SIM", "all LLM providers failed -> using the built-in demo router", "warn")

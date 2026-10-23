@@ -132,7 +132,7 @@ async def _bedrock_suggest(items: list[dict], preferences: str, n: int) -> list[
     model = bedrock_util.make_model("agent", max_tokens=1500)
     agent = Agent(model=model, tools=_build_tools(items), system_prompt=SYSTEM + AGENT_NOTE, callback_handler=None)
     t0 = time.perf_counter()
-    res = await asyncio.wait_for(agent.invoke_async(_prompt(items, preferences, n)), timeout=float(os.environ.get("AGENT_RUN_TIMEOUT", "18")))
+    res = await asyncio.wait_for(agent.invoke_async(_prompt(items, preferences, n)), timeout=float(os.environ.get("AGENT_RUN_TIMEOUT", "8")))
     used = {k: getattr(v, "call_count", "?") for k, v in getattr(res.metrics, "tool_metrics", {}).items()}
     log("AGENT", f"strands agent finished in {(time.perf_counter() - t0) * 1000:.0f} ms, tools used: {short(used) if used else 'none'}")
     llm_usage.record("AGENT", bedrock_util.model_id(model), *llm_usage.usage_from_result(res), what="strands run")
@@ -174,7 +174,7 @@ async def suggest(items: list[dict], preferences: str = "", n: int = 3) -> dict:
         except Exception as e:  # try the next provider; the MCP server must always get an answer
             errors.append(f"{provider}: {type(e).__name__}: {str(e)[:160]}")
             log("AGENT", f"{provider} failed -> {errors[-1]}", "warn")
-            import llm_chain; llm_chain.mark_down(provider, e)
+            import llm_chain; llm_chain.mark_down(provider, e, force=isinstance(e, TimeoutError))
     out = {"dishes": rules(items, n), "source": "rules"}
     if errors:
         out["llm_error"] = "; ".join(errors)
@@ -193,6 +193,6 @@ async def recipe(dish: str, items: list[dict]) -> dict:
             if d:
                 return {**d, "source": f"llm:{provider}"}
         except Exception as e:
-            import llm_chain; llm_chain.mark_down(provider, e)
+            import llm_chain; llm_chain.mark_down(provider, e, force=isinstance(e, TimeoutError))
             continue
     return {"name": dish, "steps": [], "missing": [], "source": "none"}

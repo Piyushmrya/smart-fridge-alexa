@@ -69,3 +69,42 @@ def test_cost_estimate():
     assert llm_usage.estimate("global.anthropic.claude-haiku-4-5-20251001-v1:0", 1_000_000, 1_000_000) == pytest.approx(6.0)
     assert llm_usage.estimate("global.anthropic.claude-sonnet-4-6", 1_000_000, 0) == pytest.approx(3.0)
     assert llm_usage.estimate("some-unknown-model", 10, 10) is None
+
+
+def test_simulator_bedrock_brain_stops_a_looping_model(monkeypatch):
+    """A weak model that keeps calling the same tool must be cut off at SIM_MAX_TOOL_CALLS and still answer."""
+    calls = []
+
+    class FakeSession:
+        async def call_tool(self, name, args):
+            calls.append(name)
+            return SimpleNamespace(structuredContent={"speech": "ok"}, content=[], isError=False)
+
+    tools = [{"name": "get_fridge_inventory", "description": "inventory", "input_schema": {"type": "object", "properties": {}}}]
+    monkeypatch.setattr(sim, "MAX_TOOL_CALLS", 3)
+    steps = [("tool", "get_fridge_inventory", "{}")] * 8 + [("text", "Here is what I found.")]
+    _patch_model(monkeypatch, ScriptedModel(steps))
+    reply = asyncio.run(sim._bedrock([], "what's in my fridge?", tools, FakeSession(), []))
+    assert len(calls) == 3 and reply
+
+
+def test_simulator_bedrock_brain_times_out_so_the_chain_can_fall_back(monkeypatch):
+    class Slow(ScriptedModel):
+        pass
+    monkeypatch.setattr(sim, "SIM_RUN_TIMEOUT", 0.05)
+
+    async def never(*a, **k):
+        await asyncio.sleep(5)
+    import strands
+    monkeypatch.setattr(strands.Agent, "invoke_async", never)
+    _patch_model(monkeypatch, ScriptedModel([("text", "x")]))
+    with pytest.raises(TimeoutError):
+        asyncio.run(sim._bedrock([], "hi", [], object(), []))
+
+
+def test_own_timeout_puts_provider_in_cooldown(monkeypatch):
+    import llm_chain as lc
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "a"); monkeypatch.setenv("ANTHROPIC_API_KEY", "x"); lc.reset()
+    lc.mark_down("bedrock", TimeoutError(), force=True)
+    assert lc.chain("bedrock", agent=True) == ["anthropic"]
+    lc.reset()

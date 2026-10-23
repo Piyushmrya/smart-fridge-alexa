@@ -12,5 +12,8 @@ _HERMETIC = {
     "AGENT_TIMEOUT": "6",
     "OPENAI_BASE_URL": "", "AGENT_OPENAI_BASE_URL": "",   # client caches in classifier tests key on the base URL
 }
+# tests must never pip-install packages into the developer's Python (ultralytics tries to, for optional models)
+os.environ.setdefault("YOLO_AUTOINSTALL", "False")
+
 for _k, _v in _HERMETIC.items():
     os.environ[_k] = _v

@@ -98,6 +98,7 @@ def test_load_detector_from_json_file(tmp_path):
 
 
 def test_yolo_world_detector_detect_on_blank_image():
+    pytest.importorskip("clip", reason="YOLO-World needs the optional CLIP package (pip install git+https://github.com/ultralytics/CLIP.git)")
     detector = YoloWorldDetector(confidence_threshold=0.20)
     img = Image.new("RGB", (100, 100), color="white")
     results = detector.detect(img)
@@ -109,6 +110,7 @@ def test_yolo_world_detector_detect_on_blank_image():
 
 
 def test_inventory_service_with_yolo_world_detector():
+    pytest.importorskip("clip", reason="YOLO-World needs the optional CLIP package (pip install git+https://github.com/ultralytics/CLIP.git)")
     camera = DummyCamera()
     detector = YoloWorldDetector(confidence_threshold=0.20)
     service = InventoryService(camera=camera, detector=detector)
