@@ -50,9 +50,10 @@ EDGE_URL=http://127.0.0.1:9000
 
 ## Endpoints
 
-- **`GET /inventory?force_refresh=true|false`**
-  - `force_refresh=false` (default): Returns tracked inventory from memory with updated `time_in_fridge_seconds`.
-  - `force_refresh=true`: Captures a fresh frame, runs vision detection, and updates tracking state.
+- **`GET /inventory?force_refresh=true|false&detector=llm|yolo_world|grounding_dino|owlv2|florence2`**
+  - `force_refresh=false` (default): Returns tracked inventory from memory with updated `time_in_fridge_seconds`. If a different `detector` is specified than the current active one, automatically triggers a new detection sync.
+  - `force_refresh=true`: Captures a fresh frame, runs vision detection with the requested or current detector, and updates tracking state.
+  - `detector` (optional, default: `llm` / `LLMdetector`): Selects the vision detection model. Supported values include `llm` (alias `LLMdetector`, `claude`), `yolo_world`, `grounding_dino`, `owlv2`, and `florence2`. Detectors are cached in memory so models are loaded lazily once and reused. Invalid detectors return HTTP 400 Bad Request.
 - **`PATCH /inventory`**
   - Batch updates tracked items (`label`, `confidence`, `time_in_fridge_seconds`, `manual_override`).
   - Sets `manual_override=true`, preventing vision inference from overwriting user-corrected labels.

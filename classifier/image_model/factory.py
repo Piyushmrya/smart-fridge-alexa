@@ -27,10 +27,51 @@ MODEL_APPROX_SIZES = {
     "florence2": "460 MB",
     "claude": "Cloud API (0 MB)",
     "llm": "Cloud API (0 MB)",
+    "llmdetector": "Cloud API (0 MB)",
+    "llm_detector": "Cloud API (0 MB)",
     "llm_vision": "Cloud API (0 MB)",
-    "claude": "Cloud API (0 MB)",
     "claude_vision": "Cloud API (0 MB)",
 }
+
+DETECTOR_ALIASES: Dict[str, str] = {
+    "llm": "llm",
+    "llmdetector": "llm",
+    "llm_detector": "llm",
+    "llm_vision": "llm",
+    "claude": "llm",
+    "claude_vision": "llm",
+    "yolo_world": "yolo_world",
+    "yoloworld": "yolo_world",
+    "yolo": "yolo_world",
+    "grounding_dino": "grounding_dino",
+    "groundingdino": "grounding_dino",
+    "dino": "grounding_dino",
+    "owlv2": "owlv2",
+    "owl": "owlv2",
+    "florence2": "florence2",
+    "florence": "florence2",
+}
+
+
+def normalize_detector_name(detector_name: str) -> str:
+    """Normalizes detector name alias to canonical detector type.
+
+    Raises:
+        ValueError: If detector_name is not supported.
+    """
+    if not detector_name:
+        return "llm"
+    cleaned = detector_name.strip().lower().replace("-", "_")
+    if cleaned in DETECTOR_ALIASES:
+        return DETECTOR_ALIASES[cleaned]
+    condensed = cleaned.replace("_", "")
+    for k, v in DETECTOR_ALIASES.items():
+        if k.replace("_", "") == condensed:
+            return v
+    raise ValueError(
+        f"Unsupported detector '{detector_name}'. "
+        f"Supported detectors: 'llm' (default), 'yolo_world', 'grounding_dino', 'owlv2', 'florence2'."
+    )
 
 
 def get_available_disk_space_gb(path: str = "/") -> float:
@@ -46,7 +87,7 @@ class DetectorConfig(BaseModel):
     """Configuration model for vision detectors loaded from JSON."""
 
     detector_type: Literal[
-        "llm", "llm_vision", "claude", "claude_vision", "yolo_world", "grounding_dino", "owlv2", "florence2"
+        "llm", "llm_vision", "claude", "claude_vision", "llmdetector", "llm_detector", "yolo_world", "grounding_dino", "owlv2", "florence2"
     ] = Field(
         "llm",
         description="Vision model type to use ('llm', 'claude', 'yolo_world', 'grounding_dino', 'owlv2', 'florence2')",
@@ -165,7 +206,7 @@ def load_detector_from_config(
             kwargs["task_prompt"] = cfg.options["task_prompt"]
         return Florence2Detector(**kwargs)
 
-    elif det_type in ("claude", "claude_vision", "llm", "llm_vision"):
+    elif det_type in ("claude", "claude_vision", "llm", "llm_vision", "llmdetector", "llm_detector"):
         kwargs = {}
         if cfg.model_id:
             kwargs["model_id"] = cfg.model_id
@@ -188,5 +229,34 @@ def load_detector_from_config(
     else:
         raise ValueError(
             f"Unsupported detector_type '{cfg.detector_type}'. "
-            f"Must be one of: 'yolo_world', 'grounding_dino', 'owlv2', 'florence2', 'claude'."
+            f"Must be one of: 'yolo_world', 'grounding_dino', 'owlv2', 'florence2', 'claude', 'llm'."
         )
+
+
+@Profiler
+def load_detector_by_name(detector_name: str = "llm", **kwargs) -> BaseDetector:
+    """
+    Instantiates a vision detector by canonical name or alias.
+    Reads baseline config from MODEL_CONFIG_PATH/model_config.json if present
+    and overrides detector_type and any extra kwargs.
+    """
+    canonical = normalize_detector_name(detector_name)
+    config_dict: Dict[str, Any] = {"detector_type": canonical}
+
+    config_path = os.environ.get("MODEL_CONFIG_PATH", DEFAULT_CONFIG_FILE)
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                base_cfg = json.load(f)
+                if isinstance(base_cfg, dict):
+                    if base_cfg.get("detector_type") == canonical:
+                        config_dict.update(base_cfg)
+        except Exception:
+            pass
+
+    config_dict["detector_type"] = canonical
+    if kwargs:
+        config_dict.update(kwargs)
+
+    return load_detector_from_config(config_dict=config_dict)
+

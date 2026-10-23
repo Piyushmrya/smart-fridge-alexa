@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 from PIL import Image
 
 from classifier.api.models import (
@@ -10,6 +10,11 @@ from classifier.api.models import (
     PatchInventoryResponse,
 )
 from classifier.image_model.base import BaseCamera, BaseDetector, DetectedObject
+from classifier.image_model.factory import (
+    DETECTOR_ALIASES,
+    load_detector_by_name,
+    normalize_detector_name,
+)
 from classifier.profiler import Profiler
 
 logger = logging.getLogger(__name__)
@@ -47,6 +52,13 @@ class ItemNotFoundError(Exception):
         self.item_id = item_id
 
 
+class InvalidDetectorError(Exception):
+    """Raised when an unsupported detector is requested."""
+    @Profiler
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 class InventoryService:
     """
     Model-agnostic and hardware-agnostic inventory service.
@@ -55,9 +67,38 @@ class InventoryService:
     """
 
     @Profiler
-    def __init__(self, camera: BaseCamera, detector: BaseDetector):
+    def __init__(
+        self,
+        camera: BaseCamera,
+        detector: Optional[BaseDetector] = None,
+        detector_loader: Optional[Callable[[str], BaseDetector]] = None,
+    ):
         self.camera = camera
-        self.detector = detector
+        self._detector_cache: Dict[str, BaseDetector] = {}
+        self._detector_loader = detector_loader or load_detector_by_name
+        self._current_detector_name: Optional[str] = None
+
+        if detector is not None:
+            self.detector = detector
+            det_type = getattr(detector, "detector_type", None)
+            if not det_type:
+                cls_name = detector.__class__.__name__.lower()
+                if "yolo" in cls_name:
+                    det_type = "yolo_world"
+                elif "dino" in cls_name:
+                    det_type = "grounding_dino"
+                elif "owl" in cls_name:
+                    det_type = "owlv2"
+                elif "florence" in cls_name:
+                    det_type = "florence2"
+                else:
+                    det_type = "llm"
+            self._current_detector_name = det_type
+            self._detector_cache[det_type] = detector
+            if det_type == "llm":
+                self._detector_cache["llm"] = detector
+        else:
+            self.detector = None
 
         self._inventory: Dict[str, InventoryItem] = {}
         self._first_seen_epoch: Dict[str, int] = {}
@@ -65,8 +106,45 @@ class InventoryService:
         self._item_counter: int = 0
         logger.info(
             f"[InventoryService] Initialized with camera={camera.__class__.__name__}, "
-            f"detector={detector.__class__.__name__}"
+            f"detector={self.detector.__class__.__name__ if self.detector else 'None (lazy)'}, "
+            f"current_detector_name='{self._current_detector_name}'"
         )
+
+    def register_detector(self, name: str, detector: BaseDetector) -> None:
+        """Register a pre-instantiated detector under a given name in the cache."""
+        canonical = normalize_detector_name(name) if name in DETECTOR_ALIASES else name.lower()
+        self._detector_cache[canonical] = detector
+        self._detector_cache[name.lower()] = detector
+
+    @Profiler
+    def normalize_detector_name(self, detector_name: str) -> str:
+        """Validates and normalizes detector name to canonical form."""
+        key = detector_name.strip().lower()
+        if key in self._detector_cache:
+            return key
+        try:
+            return normalize_detector_name(detector_name)
+        except ValueError as err:
+            raise InvalidDetectorError(str(err)) from err
+
+    @Profiler
+    def get_or_load_detector(self, detector_name: str) -> BaseDetector:
+        """
+        Retrieves a detector from in-memory cache or lazily instantiates it using the loader.
+        """
+        key = detector_name.strip().lower()
+        if key in self._detector_cache:
+            return self._detector_cache[key]
+
+        canonical = self.normalize_detector_name(detector_name)
+        if canonical in self._detector_cache:
+            return self._detector_cache[canonical]
+
+        logger.info(f"[InventoryService] Lazily loading detector '{canonical}' into cache...")
+        det = self._detector_loader(canonical)
+        self._detector_cache[canonical] = det
+        self._detector_cache[key] = det
+        return det
 
     @Profiler
     def _generate_item_id(self) -> str:
@@ -74,14 +152,40 @@ class InventoryService:
         return f"item_{self._item_counter}"
 
     @Profiler
-    def sync_inventory(self) -> InventoryResponse:
+    def sync_inventory(self, detector: Optional[Union[str, BaseDetector]] = None) -> InventoryResponse:
         """
         Capture frame from camera, run detection, and update tracking inventory.
         Preserves manual overrides and continuous tracking state.
         """
         sync_start = time.perf_counter()
         now = int(time.time())
-        logger.info(f"[InventoryService] >>> Starting inventory synchronization cycle at epoch {now}...")
+
+        # Determine active detector
+        if isinstance(detector, BaseDetector):
+            active_detector = detector
+            det_name = getattr(detector, "detector_type", None) or detector.__class__.__name__.lower()
+            self._detector_cache[det_name] = detector
+            self._current_detector_name = det_name
+            self.detector = active_detector
+        elif isinstance(detector, str) and detector.strip():
+            canonical = self.normalize_detector_name(detector)
+            active_detector = self.get_or_load_detector(canonical)
+            self._current_detector_name = canonical
+            self.detector = active_detector
+        elif self.detector is not None:
+            active_detector = self.detector
+            if not self._current_detector_name:
+                self._current_detector_name = "llm"
+        else:
+            canonical = "llm"
+            active_detector = self.get_or_load_detector(canonical)
+            self._current_detector_name = canonical
+            self.detector = active_detector
+
+        logger.info(
+            f"[InventoryService] >>> Starting inventory synchronization cycle at epoch {now} "
+            f"using detector='{self._current_detector_name}' ({active_detector.__class__.__name__})..."
+        )
 
         try:
             # 1. Image capture
@@ -95,7 +199,7 @@ class InventoryService:
 
             # 2. Vision model inference
             det_start = time.perf_counter()
-            detections: List[DetectedObject] = self.detector.detect(frame)
+            detections: List[DetectedObject] = active_detector.detect(frame)
             det_ms = (time.perf_counter() - det_start) * 1000
             logger.info(
                 f"[InventoryService] Model inference complete in {det_ms:.2f}ms. "
@@ -201,23 +305,44 @@ class InventoryService:
             raise
 
     @Profiler
-    def get_inventory(self, force_refresh: bool = False) -> InventoryResponse:
+    def get_inventory(
+        self,
+        force_refresh: bool = False,
+        detector: Optional[str] = None,
+    ) -> InventoryResponse:
         """
-        Get current tracked inventory. Triggers camera capture & inference
-        if force_refresh is True or if inventory has not been synced yet.
+        Get current tracked inventory.
+        
+        Triggers camera capture and inference if:
+        - force_refresh is True
+        - a different detector model is requested than the last sync (Option A)
+        - inventory has not been synced yet (epoch == 0)
+        
+        Otherwise, serves cached inventory with continuously updated presence durations.
         """
         now = int(time.time())
-        if force_refresh:
-            logger.info("[InventoryService] GET request with force_refresh=True. Triggering live sync...")
-            return self.sync_inventory()
 
-        if self._last_updated_epoch == 0:
-            logger.info("[InventoryService] GET request on unsynced inventory (epoch=0). Triggering initial sync...")
-            return self.sync_inventory()
+        if detector is not None and detector.strip():
+            target_detector_name = self.normalize_detector_name(detector)
+            detector_changed = (
+                self._current_detector_name is not None
+                and target_detector_name != self._current_detector_name
+            )
+        else:
+            target_detector_name = self._current_detector_name or "llm"
+            detector_changed = False
+
+        if force_refresh or detector_changed or self._last_updated_epoch == 0:
+            logger.info(
+                f"[InventoryService] Triggering detection sync (force_refresh={force_refresh}, "
+                f"detector_changed={detector_changed}, epoch={self._last_updated_epoch}, "
+                f"detector='{target_detector_name}')..."
+            )
+            return self.sync_inventory(detector=target_detector_name)
 
         age_seconds = now - self._last_updated_epoch
         logger.info(
-            f"[InventoryService] Serving cached inventory ({len(self._inventory)} items). "
+            f"[InventoryService] Serving cached inventory ({len(self._inventory)} items, detector='{self._current_detector_name}'). "
             f"Last updated: {self._last_updated_epoch} ({age_seconds}s ago)."
         )
 

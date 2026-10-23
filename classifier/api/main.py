@@ -1,18 +1,24 @@
 from contextlib import asynccontextmanager
 import logging
 import sys
-from typing import List
-from fastapi import Depends, FastAPI, Query, status
+from typing import List, Optional
+from fastapi import Depends, FastAPI, Query, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from classifier.api.dependencies import get_inventory_service
 from classifier.api.models import (
+    DetectorType,
     ErrorResponse,
     InventoryResponse,
     PatchInventoryItem,
     PatchInventoryResponse,
 )
-from classifier.api.service import InventoryService, ItemNotFoundError
+from classifier.api.service import (
+    InventoryService,
+    InvalidDetectorError,
+    ItemNotFoundError,
+)
 
 # Configure standardized logging across the application
 logging.basicConfig(
@@ -54,30 +60,62 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    msg = "; ".join(f"{'.'.join(str(l) for l in e.get('loc', []))}: {e.get('msg')}" for e in errors)
+    logger.warning(f"[HTTP Validation] Error on {request.method} {request.url.path}: {msg}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"success": False, "error": f"Validation error: {msg}"},
+    )
+
+
 @app.get(
     "/inventory",
     response_model=InventoryResponse,
     summary="Get current tracked inventory",
     responses={
         200: {"model": InventoryResponse, "description": "Current tracked inventory state"},
+        400: {"model": ErrorResponse, "description": "Invalid detector or parameter specified"},
         500: {"model": ErrorResponse, "description": "Internal server error during sync"},
     },
 )
 def get_inventory(
+    request: Request,
     force_refresh: bool = Query(
         default=False,
         description="Instructs pipeline to capture an immediate live frame, run inference, and bypass temporal smoothing.",
     ),
+    detector: Optional[DetectorType] = Query(
+        default=DetectorType.LLM,
+        description="Vision model to use for detection (defaults to 'llm'). Selectable via dropdown in OpenAPI docs.",
+    ),
     service: InventoryService = Depends(get_inventory_service),
 ):
-    logger.info(f"[HTTP GET /inventory] Received request (force_refresh={force_refresh})")
+    explicit_detector = (
+        detector.value if ("detector" in request.query_params and detector) else None
+    )
+    logger.info(
+        f"[HTTP GET /inventory] Received request (force_refresh={force_refresh}, "
+        f"detector={detector}, explicit={explicit_detector is not None})"
+    )
     try:
-        response = service.get_inventory(force_refresh=force_refresh)
+        response = service.get_inventory(force_refresh=force_refresh, detector=explicit_detector)
         logger.info(
             f"[HTTP GET /inventory] Responding 200 OK: {len(response.items)} items, "
             f"last_updated_epoch={response.last_updated_epoch}"
         )
         return response
+    except InvalidDetectorError as err:
+        logger.warning(f"[HTTP GET /inventory] Responding 400 BAD REQUEST: {err}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "success": False,
+                "error": str(err),
+            },
+        )
     except Exception as exc:
         logger.exception(f"[HTTP GET /inventory] Unhandled exception occurred: {exc}")
         return JSONResponse(

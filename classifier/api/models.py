@@ -1,5 +1,15 @@
+from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
+
+
+class DetectorType(str, Enum):
+    LLM = "llm"
+    LLM_DETECTOR = "LLMdetector"
+    YOLO_WORLD = "yolo_world"
+    GROUNDING_DINO = "grounding_dino"
+    OWL_V2 = "owlv2"
+    FLORENCE_2 = "florence2"
 
 
 class InventoryItem(BaseModel):
