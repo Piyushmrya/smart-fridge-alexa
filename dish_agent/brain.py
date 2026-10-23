@@ -60,10 +60,9 @@ async def _llm(user: str, provider: str | None = None) -> str:
 
 
 def _chain() -> list[str]:
-    """Providers to try in order. Bedrock falls back to the Anthropic API when a key is set."""
-    if PROVIDER == "bedrock":
-        return ["bedrock"] + (["anthropic"] if os.environ.get("ANTHROPIC_API_KEY") else [])
-    return [PROVIDER] if PROVIDER in ("anthropic", "openai") else []
+    """Providers to try in order (see llm_chain.py): the chosen one, then others that have credentials."""
+    import llm_chain
+    return llm_chain.chain(PROVIDER, agent=True)
 
 
 AGENT_NOTE = (
@@ -175,6 +174,7 @@ async def suggest(items: list[dict], preferences: str = "", n: int = 3) -> dict:
         except Exception as e:  # try the next provider; the MCP server must always get an answer
             errors.append(f"{provider}: {type(e).__name__}: {str(e)[:160]}")
             log("AGENT", f"{provider} failed -> {errors[-1]}", "warn")
+            import llm_chain; llm_chain.mark_down(provider, e)
     out = {"dishes": rules(items, n), "source": "rules"}
     if errors:
         out["llm_error"] = "; ".join(errors)
@@ -192,6 +192,7 @@ async def recipe(dish: str, items: list[dict]) -> dict:
             d = (data.get("dishes") or [None])[0]
             if d:
                 return {**d, "source": f"llm:{provider}"}
-        except Exception:
+        except Exception as e:
+            import llm_chain; llm_chain.mark_down(provider, e)
             continue
     return {"name": dish, "steps": [], "missing": [], "source": "none"}

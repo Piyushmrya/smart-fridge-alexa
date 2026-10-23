@@ -190,23 +190,32 @@ async def _demo(history, user, tools, session, trace):
 
 async def chat(history: list[dict], user: str) -> dict:
     t0 = time.perf_counter()
-    log("SIM", f'you said: "{short(user, 120)}"  (brain: {PROVIDER})')
+    log("SIM", f'you said: "{short(user, 120)}"  (brain: {PROVIDER} -> {" > ".join(__import__("llm_chain").chain(PROVIDER, agent=False)) or "built-in demo router"})')
     tools = await get_tools()
     trace: list[dict] = []
     async with mcp_session() as (session, init):
-        fn = {"bedrock": _bedrock, "anthropic": _anthropic, "openai": _openai}.get(PROVIDER, _demo)
-        try:
+        import llm_chain
+        fns = {"bedrock": _bedrock, "anthropic": _anthropic, "openai": _openai}
+        reply, used, failures = None, "demo", []
+        for name in llm_chain.chain(PROVIDER, agent=False):
             try:
-                reply = await fn(history, user, tools, session, trace)
-            except Exception as e:
-                if PROVIDER != "bedrock" or not os.environ.get("ANTHROPIC_API_KEY"):
-                    raise
-                log("SIM", f"Bedrock failed ({type(e).__name__}: {short(e, 120)}) -> retrying with the Anthropic API", "warn")
                 trace.clear()
-                reply = await _anthropic(history, user, tools, session, trace)
-        except Exception as e:  # missing key, network, etc.
-            reply = f"Sorry, my brain hit an error: {type(e).__name__}: {e}"
-            log("SIM", f"brain error: {type(e).__name__}: {short(e, 160)}", "fail")
+                reply = await fns[name](history, user, tools, session, trace)
+                used = name
+                break
+            except Exception as e:
+                failures.append(name)
+                log("SIM", f"{name} failed ({type(e).__name__}: {short(e, 120)}) -> trying the next provider", "warn")
+                llm_chain.mark_down(name, e)
+        if reply is None:   # nothing configured, or everything failed: the built-in keyword router always works
+            if failures:
+                log("SIM", "all LLM providers failed -> using the built-in demo router", "warn")
+            trace.clear()
+            try:
+                reply = await _demo(history, user, tools, session, trace)
+            except Exception as e:  # the MCP server itself is unreachable
+                reply = f"Sorry, my brain hit an error: {type(e).__name__}: {e}"
+                log("SIM", f"brain error: {type(e).__name__}: {short(e, 160)}", "fail")
     log("SIM", f'reply in {(time.perf_counter() - t0) * 1000:.0f} ms, {len(trace)} tool call(s): "{short(reply, 100)}"', "fail" if reply.startswith("Sorry, my brain") else "ok")
-    return {"reply": reply, "trace": trace, "provider": PROVIDER if PROVIDER in ("bedrock", "anthropic", "openai") else "demo",
+    return {"reply": reply, "trace": trace, "provider": used,
             "total_ms": round((time.perf_counter() - t0) * 1000)}

@@ -10,7 +10,7 @@ the MCP server falls back to the same rule-based logic.
 | `brain.py` | The actual thinking: prompt, LLM call, JSON parsing, rule-based fallback. |
 
 ## brain.py — important parts
-- `PROVIDER`: from `AGENT_LLM_PROVIDER` — `bedrock` (Strands agent on Amazon Bedrock, with tools: rank recipes, recipe steps, TheMealDB search, shopping list), `anthropic`, `openai`, or `rules` (no key needed). Fallback chain: bedrock -> anthropic (if key set) -> rules. Token usage and estimated cost are logged per call (`llm_usage.py`).
+- `PROVIDER`: from `AGENT_LLM_PROVIDER` — `bedrock` (Strands agent on Amazon Bedrock, with tools: rank recipes, recipe steps, TheMealDB search, shopping list), `anthropic`, `openai`, or `rules` (no key needed). Order is decided by `llm_chain.py`: the chosen provider (or `auto`: bedrock -> anthropic -> openai, only those with credentials), then rules. Providers with access/quota errors are skipped for a cooldown. Token usage and estimated cost are logged per call (`llm_usage.py`).
 - `SYSTEM`: the instruction given to the LLM (Indian home cooking, use soon-to-expire items first,
   assume pantry staples, answer with JSON only).
 - `_prompt(items, preferences, n)`: turns the fridge list into the user message.

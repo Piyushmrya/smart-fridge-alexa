@@ -30,7 +30,7 @@ Use `python -m package.module` from the project root (not a file path). For a fa
 No keys are needed: the agent defaults to `rules` and the simulator to `demo`. For real LLMs set
 `AGENT_LLM_PROVIDER=anthropic` and `LLM_PROVIDER=anthropic` plus `ANTHROPIC_API_KEY`.
 
-**Amazon Bedrock (Strands Agents SDK):** set `AGENT_LLM_PROVIDER=bedrock`, `LLM_PROVIDER=bedrock`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION` and the two `BEDROCK_*_MODEL_ID` values (see `.env.example`), then run `python scripts/check_bedrock.py` to verify access, latency and cost. If Bedrock fails and `ANTHROPIC_API_KEY` is set, both services fall back to the Anthropic API, then to built-in rules.
+**Amazon Bedrock (Strands Agents SDK):** set `AGENT_LLM_PROVIDER=bedrock`, `LLM_PROVIDER=bedrock`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION` and the two `BEDROCK_*_MODEL_ID` values (see `.env.example`), then run `python scripts/check_bedrock.py` to verify access, latency and cost. Set both to `auto` to use whatever credentials exist: Bedrock (AWS keys or Bedrock API key), then Anthropic, then OpenAI, then the built-in fallback, so the app works with any one provider, or none. A provider that fails with an access, quota or auth error is skipped for 5 minutes (`LLM_COOLDOWN_SECONDS`). See `llm_chain.py`.
 Without `EDGE_URL` the server runs in legacy **push mode** (see `classifier_stub/push_example.py`).
 Logs: one clean line per step (`LOG_LEVEL=quiet|normal|debug`).
 

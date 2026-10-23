@@ -29,5 +29,5 @@ then open http://127.0.0.1:8898. See `docs/HOW_IT_WORKS.md` for the full flow.
 - `SYSTEM`: the Alexa+ persona prompt (short spoken sentences, never guess, always call a tool first).
 
 ## Settings (.env)
-`LLM_PROVIDER` (`demo|anthropic|openai`), `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `MCP_URL`,
+`LLM_PROVIDER` (`demo|bedrock|anthropic|openai`; bedrock = Strands agent on Haiku 4.5 using the MCP tools, falls back through anthropic and openai if keys exist, then the demo router; `auto` tries all that have credentials, see `llm_chain.py`), `AWS_BEARER_TOKEN_BEDROCK`, `BEDROCK_SIM_MODEL_ID`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `MCP_URL`,
 `MCP_API_KEY`, `SIM_PORT`, `LOG_LEVEL`.
