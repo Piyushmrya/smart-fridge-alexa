@@ -135,8 +135,6 @@ class LLMClient:
             }
             if system_prompt:
                 kwargs["system"] = system_prompt
-            if temperature is not None:
-                kwargs["temperature"] = temperature
 
             raw_resp = client.messages.create(**kwargs)
             latency_ms = (time.perf_counter() - t0) * 1000.0
@@ -237,8 +235,6 @@ class LLMClient:
             }
             if system_prompt:
                 kwargs["system"] = system_prompt
-            if temperature is not None:
-                kwargs["temperature"] = temperature
 
             raw_resp = client.messages.create(**kwargs)
             latency_ms = (time.perf_counter() - t0) * 1000.0
